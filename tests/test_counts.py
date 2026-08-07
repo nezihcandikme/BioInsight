@@ -6,6 +6,7 @@ from bioinsight.io.counts import (
     NonIntegerCountsError,
     check_all_integer,
     validate_counts,
+    load_count_matrix,
 )
 def test_validate_counts_invalid_raises():
     df = pd.DataFrame({"sample_A": [1.5, 2, 3]})
@@ -36,3 +37,9 @@ def test_validate_counts_multiple_errors_raises():
 
     with pytest.raises(CountMatrixError):
         validate_counts(df)
+def test_load_count_matrix_invalid_raises():
+    with pytest.raises(CountMatrixError):
+        load_count_matrix("tests/fixtures/bad_counts.csv")
+def test_load_count_matrix_valid():
+    df = load_count_matrix("tests/fixtures/toy_counts.csv")
+    assert df.shape == (4,3)

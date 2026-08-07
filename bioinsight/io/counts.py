@@ -155,3 +155,25 @@ def validate_counts(df: pd.DataFrame) -> None:
         raise errors[0]
     else:
         raise CountMatrixError("\n".join(str(e) for e in errors))   
+def load_count_matrix(path: str) -> pd.DataFrame:
+    """
+    Load a count matrix from a CSV file and validate its structure and values.
+
+    Parameters
+    ----------
+    path : str
+        The file path to the CSV file containing the count matrix.
+
+    Returns
+    -------
+    pd.DataFrame
+        The validated count matrix as a DataFrame.
+
+    Raises
+    ------
+    CountMatrixError
+        If the loaded DataFrame fails validation checks.
+    """
+    df = pd.read_csv(path, index_col=0)
+    validate_counts(df)
+    return df
