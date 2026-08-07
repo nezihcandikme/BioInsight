@@ -51,6 +51,34 @@ def flag_outlier_samples(sizes: pd.Series, threshold: float = 3.0) -> pd.Series:
         return pd.Series(False, index=sizes.index)
     modified_z_scores = 0.6745 * deviations / mad
     return modified_z_scores > threshold
+def run_sample_qc(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Run quality control metrics on the given DataFrame of gene expression data.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A DataFrame containing gene expression data with samples as columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the QC metrics for each sample, including library size, genes detected, and outlier flags.
+    """
+    sizes = library_size(df)
+    genes = genes_detected(df)
+
+    lib_outliers = flag_outlier_samples(sizes)
+    genes_outliers = flag_outlier_samples(genes)
+
+    qc_metrics = pd.DataFrame({
+    "library_size": sizes,
+    "genes_detected": genes,
+    "library_size_outlier": lib_outliers,
+    "genes_detected_outlier": genes_outliers,
+    "is_outlier": lib_outliers | genes_outliers,
+    })
+
+    return qc_metrics
 
    

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from bioinsight.qc.metrics import library_size, genes_detected, flag_outlier_samples
+from bioinsight.qc.metrics import library_size, genes_detected, flag_outlier_samples, run_sample_qc
 
 def test_library_size():
     df = pd.DataFrame({"sample_A": [1, 2, 3], "sample_B": [4, 5, 6]})
@@ -24,3 +24,11 @@ def test_flag_outlier_samples_mad_zero():
     expected = pd.Series({"sample_A": False, "sample_B": False, "sample_C": False})
     result = flag_outlier_samples(sizes)
     pd.testing.assert_series_equal(result, expected)
+def test_run_sample_qc():
+    df = pd.DataFrame({"sample_A": [1, 2, 3], "sample_B": [4, 5, 6]})
+    result = run_sample_qc(df)
+    assert list(result["library_size"]) == [6, 15]
+    assert list(result["genes_detected"]) == [3, 3]
+    assert list(result["is_outlier"]) == [False, False]
+    assert list(result["library_size_outlier"]) == [False, False]
+    assert list(result["genes_detected_outlier"]) == [False, False]
