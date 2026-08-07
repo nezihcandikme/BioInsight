@@ -2,10 +2,16 @@ import pandas as pd
 import pytest
 
 from bioinsight.io.counts import (
+    CountMatrixError,
     NonIntegerCountsError,
     check_all_integer,
     validate_counts,
 )
+def test_validate_counts_invalid_raises():
+    df = pd.DataFrame({"sample_A": [1.5, 2, 3]})
+
+    with pytest.raises(CountMatrixError):
+        validate_counts(df)
 
 
 def test_check_all_integer_valid():
@@ -25,9 +31,8 @@ def test_validate_counts_valid_does_not_raise():
 
     validate_counts(df)
 
+def test_validate_counts_multiple_errors_raises():
+    df = pd.DataFrame({"sample_A": [-1.5, 2, 3]})
 
-def test_validate_counts_invalid_raises():
-    df = pd.DataFrame({"sample_A": [1.5, 2, 3]})
-
-    with pytest.raises(NonIntegerCountsError):
+    with pytest.raises(CountMatrixError):
         validate_counts(df)
