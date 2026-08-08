@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+from scipy import stats
+import pytest
 
-from bioinsight.differential_expression.methods import compute_log_fold_change
+from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues
 
 def test_compute_log_fold_change():
     # Create a sample DataFrame
@@ -27,3 +29,27 @@ def test_compute_log_fold_change():
 
     # Assert that the computed log fold change matches the expected values
     pd.testing.assert_series_equal(log_fc, expected_log_fc)
+def test_compute_pvalues_clear_difference():
+    df = pd.DataFrame({
+        "sample1": [1, 1, 1],
+        "sample2": [2, 2, 2],
+        "sample3": [1000, 1000, 1000],
+        "sample4": [999, 999, 999],
+    }, index=["gene1", "gene2", "gene3"])
+
+    pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert all(pvalues < 0.05)
+
+
+def test_compute_pvalues_no_difference():
+    df = pd.DataFrame({
+        "sample1": [9, 19, 4],
+        "sample2": [11, 21, 6],
+        "sample3": [8, 18, 3],
+        "sample4": [12, 22, 7],
+    }, index=["gene1", "gene2", "gene3"])
+
+    pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert all(pvalues.apply(lambda p: p == pytest.approx(1.0, abs=0.01)))

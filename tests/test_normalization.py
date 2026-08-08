@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
+import numpy as np
+from scipy import stats
 from bioinsight.core import library_size, genes_detected
 from bioinsight.normalization.methods import compute_cpm, log2_transform
+
+
 
 def test_compute_cpm():
     # Create a sample DataFrame with raw counts
@@ -42,3 +46,4 @@ def test_log2_transform():
         'Sample3': [2.807354922057604, 3.0, 3.169925001442312]
     })
     pd.testing.assert_frame_equal(log2_df, expected_log2_df, check_exact=False, rtol=1e-3)
+

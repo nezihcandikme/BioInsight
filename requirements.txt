@@ -1,3 +1,4 @@
+-e git+https://github.com/nezihcandikme/BioInsight.git@deb12772ad742600fe1cc06f5f4213df3038ddf3#egg=bioinsight
 iniconfig==2.3.0
 numpy==2.5.1
 packaging==26.3
@@ -6,4 +7,5 @@ pluggy==1.6.0
 Pygments==2.20.0
 pytest==9.1.1
 python-dateutil==2.9.0.post0
+scipy==1.18.0
 six==1.17.0
