@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import pytest
+from statsmodels.stats.multitest import multipletests
 
-from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues
+from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues, compute_adjusted_pvalues
 
 def test_compute_log_fold_change():
     # Create a sample DataFrame
@@ -53,3 +54,19 @@ def test_compute_pvalues_no_difference():
     pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
 
     assert all(pvalues.apply(lambda p: p == pytest.approx(1.0, abs=0.01)))
+def test_compute_adjusted_pvalues_single():
+    pvalues = pd.Series({"gene1": 0.03})
+    adjusted = compute_adjusted_pvalues(pvalues)
+    assert adjusted["gene1"] == pytest.approx(0.03)
+
+def test_compute_adjusted_pvalues_never_smaller():
+    pvalues = pd.Series({"gene1": 0.01, "gene2": 0.2, "gene3": 0.04, "gene4": 0.5})
+    adjusted = compute_adjusted_pvalues(pvalues)
+    assert all(adjusted >= pvalues)
+
+def test_compute_adjusted_pvalues_equal_spacing():
+    pvalues = pd.Series({
+        "gene1": 0.01, "gene2": 0.02, "gene3": 0.03, "gene4": 0.04, "gene5": 0.05
+    })
+    adjusted = compute_adjusted_pvalues(pvalues)
+    assert all(adjusted.apply(lambda p: p == pytest.approx(0.05, abs=1e-6)))

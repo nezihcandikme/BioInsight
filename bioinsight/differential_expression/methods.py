@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from scipy import stats
-
+from statsmodels.stats.multitest import multipletests
 
 def compute_log_fold_change(df: pd.DataFrame, group_1: list[str], group_2: list[str]) -> pd.Series:
     """
@@ -56,3 +56,22 @@ def compute_pvalues(df: pd.DataFrame, group_1: list[str], group_2: list[str]) ->
     df.apply(test_one_gene, axis=1)
 
     return df.apply(test_one_gene, axis=1)
+
+def compute_adjusted_pvalues(pvalues: pd.Series, method: str = 'fdr_bh') -> pd.Series:
+    """
+    Adjust p-values for multiple testing using the specified method.
+
+    Parameters
+    ----------
+    pvalues : pd.Series
+        A Series containing the p-values to be adjusted.
+    method : str, optional
+        The method to use for adjusting p-values. Default is 'fdr_bh' (Benjamini/Hochberg).
+
+    Returns
+    -------
+    pd.Series
+        A Series containing the adjusted p-values.
+    """
+    adjusted_pvalues = multipletests(pvalues, method=method)[1]
+    return pd.Series(adjusted_pvalues, index=pvalues.index)
