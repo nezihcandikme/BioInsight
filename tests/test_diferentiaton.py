@@ -4,7 +4,7 @@ from scipy import stats
 import pytest
 from statsmodels.stats.multitest import multipletests
 
-from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues, compute_adjusted_pvalues
+from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues, compute_adjusted_pvalues, run_differential_expression
 
 def test_compute_log_fold_change():
     # Create a sample DataFrame
@@ -70,3 +70,26 @@ def test_compute_adjusted_pvalues_equal_spacing():
     })
     adjusted = compute_adjusted_pvalues(pvalues)
     assert all(adjusted.apply(lambda p: p == pytest.approx(0.05, abs=1e-6)))
+def test_run_differential_expression():
+    df = pd.DataFrame({
+        "sample1": [10, 5, 2],
+        "sample2": [20, 15, 4],
+        "sample3": [30, 25, 6],
+        "sample4": [28, 24, 5],
+    }, index=["gene1", "gene2", "gene3"])
+
+    results_df = run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert "log_fold_change" in results_df.columns
+    assert "p_value" in results_df.columns
+    assert "adjusted_p_value" in results_df.columns
+    assert "significant" in results_df.columns
+def test_compute_pvalues_insufficient_samples():
+    df = pd.DataFrame({
+        "sample1": [10, 5, 2],
+        "sample2": [20, 15, 4],
+        "sample3": [30, 25, 6],
+    }, index=["gene1", "gene2", "gene3"])
+
+    with pytest.raises(ValueError):
+        compute_pvalues(df, ["sample1", "sample2"], ["sample3"])
