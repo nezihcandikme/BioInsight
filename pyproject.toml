@@ -11,7 +11,8 @@ dependencies = [
     "numpy",
     "scipy",
     "statsmodels",
-    "matplotlib"
+    "matplotlib",
+    "scikit-learn"
 ]
 
 [tool.setuptools.packages.find]
