@@ -29,6 +29,8 @@ def run_analysis(
     group_2: list[str],
     gene_sets: dict[str, set[str]] | None = None,
     background_genes: set[str] | None = None,
+    alpha: float = 0.05,
+    lfc_threshold: float = 1.0,
     generate_plots: bool = True,
     explain_results: bool = False,
 ) -> dict:
@@ -56,6 +58,12 @@ def run_analysis(
     background_genes : set[str], optional
         The background gene universe for enrichment analysis. Required if
         ``gene_sets`` is provided.
+    alpha : float, optional
+        Adjusted p-value cutoff passed through to ``run_differential_expression``.
+        Default 0.05.
+    lfc_threshold : float, optional
+        Log fold change cutoff passed through to ``run_differential_expression``.
+        Default 1.0.
     generate_plots : bool, optional
         Whether to generate a volcano plot and a PCA plot. Default True.
     explain_results : bool, optional
@@ -94,7 +102,7 @@ def run_analysis(
     normalized = log2_transform(cpm)
     results["normalized"] = normalized
 
-    de_results = run_differential_expression(normalized, group_1, group_2)
+    de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold)
     results["differential_expression"] = de_results
 
     if generate_plots:

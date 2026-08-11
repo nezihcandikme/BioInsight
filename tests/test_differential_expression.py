@@ -103,6 +103,46 @@ def test_run_differential_expression():
     assert "significant" in results_df.columns
 
 
+def test_run_differential_expression_custom_thresholds_change_significance():
+    df = pd.DataFrame({
+        "sample1": [1, 1, 1],
+        "sample2": [2, 2, 2],
+        "sample3": [3, 3, 3],
+        "sample4": [4, 4, 4],
+    }, index=["gene1", "gene2", "gene3"])
+
+    default_results = run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"])
+    lenient_results = run_differential_expression(
+        df, ["sample1", "sample2"], ["sample3", "sample4"], alpha=1.0, lfc_threshold=0.0
+    )
+
+    # Same underlying numbers either way — only which rows count as
+    # "significant" should move when the thresholds move.
+    pd.testing.assert_series_equal(default_results["p_value"], lenient_results["p_value"])
+    assert lenient_results["significant"].sum() >= default_results["significant"].sum()
+
+
+def test_run_differential_expression_invalid_alpha_raises():
+    df = pd.DataFrame({
+        "sample1": [1, 2], "sample2": [1, 2], "sample3": [3, 4], "sample4": [3, 4],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="alpha"):
+        run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"], alpha=0)
+
+    with pytest.raises(ValueError, match="alpha"):
+        run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"], alpha=1.5)
+
+
+def test_run_differential_expression_negative_lfc_threshold_raises():
+    df = pd.DataFrame({
+        "sample1": [1, 2], "sample2": [1, 2], "sample3": [3, 4], "sample4": [3, 4],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="lfc_threshold"):
+        run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"], lfc_threshold=-1)
+
+
 def test_compute_pvalues_constant_expression_equal_means():
     df = pd.DataFrame({
         "sample1": [5, 5],

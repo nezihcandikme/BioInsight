@@ -2,7 +2,7 @@
 
 BioInsight is a small RNA-seq analysis pipeline, built in Python, that takes a raw gene count matrix and walks it through validation, quality control, normalization, exploratory differential expression, visualization, and pathway enrichment — with an optional layer that asks an LLM to summarize the results in plain language.
 
-It is a personal, actively developed project (currently v0.3.2), not a maintained scientific tool. If you're evaluating whether to depend on it: don't, yet. If you want to read clean-ish code that implements the standard early steps of an RNA-seq workflow, or you're learning the same things I was learning while writing it, it might be genuinely useful.
+It is a personal, actively developed project (currently v0.3.3), not a maintained scientific tool. If you're evaluating whether to depend on it: don't, yet. If you want to read clean-ish code that implements the standard early steps of an RNA-seq workflow, or you're learning the same things I was learning while writing it, it might be genuinely useful.
 
 ## What BioInsight is
 
@@ -146,6 +146,7 @@ Worth reading before trusting any output:
 
 - **CPM corrects for sequencing depth only.** It does not correct for gene length, RNA composition effects, or other technical/compositional biases. It is not TPM, and it is not DESeq2's median-of-ratios normalization.
 - **`log_fold_change` is `mean(group_1) - mean(group_2)`.** This is a genuine log2 fold change *only* if the input is already on a log2 scale (which is why `run_differential_expression` expects log2-CPM input, not raw counts). Feed it raw or linear-scale data and you get a difference of means — a real, computable number, just not the quantity its name implies.
+- **The `significant` column is `adjusted_p_value < alpha` and `abs(log_fold_change) > lfc_threshold`**, both configurable (`run_differential_expression(..., alpha=0.05, lfc_threshold=1.0)`, same defaults). There's no statistically correct value for either — they're conventions, and loosening them doesn't make weaker evidence stronger.
 - **Differential expression uses Welch's t-test per gene**, not a count-based negative-binomial model. It does not model biological dispersion or the count-specific mean-variance relationship that tools like DESeq2 and edgeR are built around. It's a legitimate exploratory method; it is not a substitute for those tools when the result needs to support a real biological or clinical claim.
 - **Multiple-testing correction (Benjamini-Hochberg) is not optional.** Testing thousands of genes without it means a meaningful fraction of "significant" genes are noise, regardless of what the biology actually did.
 - **Pathway enrichment is only as correct as the background you give it.** The hypergeometric test's answer depends entirely on `background_genes` being the actual tested universe (e.g. every gene that passed expression filtering) — not "every gene in the genome." Get the background wrong and the p-values are answering a different question than the one you think you're asking.
@@ -156,7 +157,6 @@ Worth reading before trusting any output:
 - The DE method has not been benchmarked against DESeq2 or edgeR on a real dataset. Until that happens, treat its output as directionally interesting, not confirmed.
 - No independent filtering step before DE (e.g. dropping very-low-count genes), which real pipelines typically do before testing.
 - No batch-effect handling.
-- `run_differential_expression`'s significance thresholds (`adjusted_p_value < 0.05`, `|log_fold_change| > 1`) are hardcoded, not configurable.
 - Pathway enrichment takes gene sets as plain Python `dict`/`set` input — there's no built-in loader for standard formats (GMT, MSigDB, Enrichr) yet.
 - The AI explanation layer narrates existing numbers; it doesn't verify them, and it shouldn't be trusted more than the analysis it's describing.
 
@@ -168,15 +168,14 @@ Built in a short, dense stretch — the git history reads almost one module a da
 - **Aug 7** — `load_count_matrix`, then sample QC: library size, genes detected, MAD-based outlier flagging (v0.0.2). CPM normalization followed the same day (v0.0.3 start) — the first time "sample A has more reads than sample B" had to become "and here's how I correct for that."
 - **Aug 8** — log2 transformation, then the first differential expression code: log fold change and Welch's t-test. This is roughly where "the code runs" stopped being good enough and "does this number mean what I think it means" took over.
 - **Aug 9** — Benjamini-Hochberg correction and a minimum-sample-size check for the t-test (v0.1); volcano and PCA plots (v0.2); hypergeometric pathway enrichment (v0.3).
-- **Aug 11** — A full correctness pass (v0.3.1): fixed broken package files, restricted enrichment to the tested background, guarded CPM and the t-test against zero-count and zero-variance edge cases, added `run_analysis()` to tie every module together, and wrote the tests that should have existed for all of the above from the start. Same day, a consistency/documentation pass (v0.3.2): more edge-case guards (empty gene sets, empty backgrounds, PCA with too few samples, NaN leaking through multiple-testing correction), per-sample error messages instead of generic ones, and this README rewrite.
+- **Aug 11** — A full correctness pass (v0.3.1): fixed broken package files, restricted enrichment to the tested background, guarded CPM and the t-test against zero-count and zero-variance edge cases, added `run_analysis()` to tie every module together, and wrote the tests that should have existed for all of the above from the start. Same day, a consistency/documentation pass (v0.3.2): more edge-case guards (empty gene sets, empty backgrounds, PCA with too few samples, NaN leaking through multiple-testing correction), per-sample error messages instead of generic ones, and this README rewrite. Then (v0.3.3): `alpha`/`lfc_threshold` became real parameters on `run_differential_expression` and `run_analysis` instead of numbers buried in the function body.
 
 ## Roadmap
 
 1. Benchmark DE output against DESeq2/edgeR on a real public dataset — this is the one that actually matters before calling the DE module trustworthy.
 2. A pre-DE low-count filtering step.
-3. Configurable significance thresholds.
-4. GMT/MSigDB gene set loading for pathway enrichment.
-5. Optional integrations: Enrichr/g:Profiler for enrichment, gene annotation lookups, GEO/SRA dataset retrieval.
+3. GMT/MSigDB gene set loading for pathway enrichment.
+4. Optional integrations: Enrichr/g:Profiler for enrichment, gene annotation lookups, GEO/SRA dataset retrieval.
 
 Current mission, in short: make the statistical layer harder to fool before making it do more things.
 
@@ -187,4 +186,4 @@ pip install -e ".[dev]"
 pytest
 ```
 
-56 tests as of v0.3.2, covering both the happy path and the edge cases that actually break real analyses: zero-count samples, constant-expression genes, NaN propagation through multiple-testing correction, missing/duplicate/overlapping sample names, empty gene sets and empty backgrounds, and a couple of plotting edge cases (too few samples for PCA, a p-value of exactly zero on a volcano plot). CI runs the suite on Python 3.10–3.12 on every push.
+60 tests as of v0.3.3, covering both the happy path and the edge cases that actually break real analyses: zero-count samples, constant-expression genes, NaN propagation through multiple-testing correction, missing/duplicate/overlapping sample names, empty gene sets and empty backgrounds, and a couple of plotting edge cases (too few samples for PCA, a p-value of exactly zero on a volcano plot). CI runs the suite on Python 3.10–3.12 on every push.

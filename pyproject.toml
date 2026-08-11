@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioinsight"
-version = "0.3.2"
+version = "0.3.3"
 description = "A small, actively-built RNA-seq pipeline: validation, QC, normalization, exploratory differential expression, visualization, and pathway enrichment."
 requires-python = ">=3.9"
 dependencies = [
