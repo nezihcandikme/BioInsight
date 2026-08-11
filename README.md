@@ -12,7 +12,7 @@ Each answer became a module. The result is a working, testable, incrementally-bu
 
 ## Why I started building it
 
-I'm a CS student, and RNA-seq analysis was one of those things I understood in outline — "you count reads per gene, compare conditions, get a list of genes that changed" — without understanding any of the machinery underneath. The fastest way I know how to actually learn something is to implement it badly, watch it break, and fix it until it stops lying to me.
+I'm a highschool student, and RNA-seq analysis was one of those things I understood in outline — "you count reads per gene, compare conditions, get a list of genes that changed" — without understanding any of the machinery underneath. The fastest way I know how to actually learn something is to implement it badly, watch it break, and fix it until it stops lying to me.
 
 So BioInsight began as an exercise in learning how a count matrix moves through a pipeline: what "valid" even means for one, why library size differs sample to sample and what that does to your comparisons, why a plain difference of means isn't a fold change unless you're on a log scale, why testing thousands of genes at once makes p-values misleading unless you correct for it, and why "the code ran without an error" and "the biology this represents makes sense" are two completely different bars to clear. This project is the record of working through those questions in order, one module at a time.
 
