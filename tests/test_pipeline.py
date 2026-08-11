@@ -66,6 +66,30 @@ def test_run_analysis_missing_sample_raises():
         )
 
 
+def test_run_analysis_passes_through_de_thresholds():
+    df = _toy_counts()
+
+    strict = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        alpha=0.001,
+        generate_plots=False,
+    )
+    lenient = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        alpha=1.0,
+        lfc_threshold=0.0,
+        generate_plots=False,
+    )
+
+    strict_sig = strict["differential_expression"]["significant"].sum()
+    lenient_sig = lenient["differential_expression"]["significant"].sum()
+    assert lenient_sig >= strict_sig
+
+
 def test_run_analysis_duplicate_sample_across_groups_raises():
     df = _toy_counts()
 

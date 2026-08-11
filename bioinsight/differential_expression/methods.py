@@ -202,7 +202,13 @@ def compute_adjusted_pvalues(pvalues: pd.Series, method: str = 'fdr_bh') -> pd.S
     return pd.Series(adjusted_pvalues, index=pvalues.index)
 
 
-def run_differential_expression(df: pd.DataFrame, group_1: list[str], group_2: list[str]) -> pd.DataFrame:
+def run_differential_expression(
+    df: pd.DataFrame,
+    group_1: list[str],
+    group_2: list[str],
+    alpha: float = 0.05,
+    lfc_threshold: float = 1.0,
+) -> pd.DataFrame:
     """
     Run the full exploratory DE workflow: log fold change, Welch's t-test,
     and Benjamini-Hochberg correction, combined into one results table.
@@ -218,6 +224,15 @@ def run_differential_expression(df: pd.DataFrame, group_1: list[str], group_2: l
         samples as columns).
     group_1, group_2 : list[str]
         Sample names (column names in ``df``) for each comparison group.
+    alpha : float, optional
+        Adjusted p-value cutoff for the ``significant`` column. Default
+        0.05. There's nothing statistically special about 0.05 — it's a
+        convention, not a law — so this is exposed rather than buried.
+    lfc_threshold : float, optional
+        Minimum ``abs(log_fold_change)`` for the ``significant`` column.
+        Default 1.0 (i.e. a 2x difference on a log2 scale). Only meaningful
+        as a fold-change cutoff if ``df`` is actually log2-scaled — see the
+        module docstring.
 
     Returns
     -------
@@ -226,11 +241,21 @@ def run_differential_expression(df: pd.DataFrame, group_1: list[str], group_2: l
         - ``log_fold_change``: mean(group_1) - mean(group_2)
         - ``p_value``: raw Welch's t-test p-value
         - ``adjusted_p_value``: Benjamini-Hochberg corrected p-value
-        - ``significant``: ``adjusted_p_value < 0.05`` and
-          ``abs(log_fold_change) > 1`` (both thresholds are fixed, not
-          configurable yet — a real analysis should treat them as a
-          starting point, not a verdict)
+        - ``significant``: ``adjusted_p_value < alpha`` and
+          ``abs(log_fold_change) > lfc_threshold`` — a starting point for
+          further inspection, not a verdict, regardless of what you set
+          the thresholds to.
+
+    Raises
+    ------
+    ValueError
+        If ``alpha`` is not in (0, 1], or ``lfc_threshold`` is negative.
     """
+    if not (0 < alpha <= 1):
+        raise ValueError(f"alpha must be in (0, 1]; got {alpha}.")
+    if lfc_threshold < 0:
+        raise ValueError(f"lfc_threshold must be >= 0; got {lfc_threshold}.")
+
     log_fold_change = compute_log_fold_change(df, group_1, group_2)
     pvalues = compute_pvalues(df, group_1, group_2)
     adjusted_pvalues = compute_adjusted_pvalues(pvalues)
@@ -240,6 +265,6 @@ def run_differential_expression(df: pd.DataFrame, group_1: list[str], group_2: l
         'p_value': pvalues,
         'adjusted_p_value': adjusted_pvalues
     })
-    results_df["significant"] = (results_df["adjusted_p_value"] < 0.05) & (results_df["log_fold_change"].abs() > 1)
+    results_df["significant"] = (results_df["adjusted_p_value"] < alpha) & (results_df["log_fold_change"].abs() > lfc_threshold)
 
     return results_df
