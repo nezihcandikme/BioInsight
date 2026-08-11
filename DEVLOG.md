@@ -2,7 +2,7 @@
 
 The README tells you what BioInsight is. This tells you why it looks the way it does — the actual decisions, the bugs that forced them, and the things I considered and didn't do. Git commit messages say *what* changed. This is for the *why*, in more than one line.
 
-Organized by day. Early entries are shorter because they're reconstructed from the commits and the code itself — I didn't start keeping a real devlog until the Aug 11 session, so I'm not going to pretend I remember internal debates from Aug 6 that I didn't write down.
+Organized by day, not by session — a day can have several working sessions in it, but the entry below is one consolidated record of what changed and why, not a session-by-session transcript. Early entries are shorter because they're reconstructed from the commits and the code itself — I didn't start keeping a real devlog until Aug 11, so I'm not going to pretend I remember internal debates from Aug 6 that I didn't write down.
 
 ---
 
@@ -30,51 +30,38 @@ Benjamini-Hochberg correction, a minimum-sample-size check for the t-test, volca
 
 ---
 
-## Aug 11 — session 1: make it harder to fool (v0.3.1)
+## Aug 11 — make it harder to fool, then make it honest about what it is
 
-A full pass through the whole pipeline looking for the gap between "the code doesn't crash" and "the code is right." Found more than expected:
+The longest day so far, by a wide margin. Grouped by topic below, not by sitting, since the topics are what matter a year from now — not how many times I got up for coffee.
 
-- **Every `__init__.py` in the project except one was misspelled** (`_init_.py`, `__init_.py`, even `__init.py`) and the top-level `bioinsight/__init__.py` didn't exist at all. Python's namespace-package fallback was quietly papering over this, which is exactly the kind of thing that works until it doesn't. Fixed all of them, added the missing one.
-- **Pathway enrichment wasn't restricting to the tested background before computing overlaps.** A gene that was never even eligible to be "significant" (outside the background universe) could still count toward the overlap and inflate the enrichment p-value. Fixed by intersecting `significant_genes` and each `gene_set` with `background_genes` before touching the hypergeometric math.
-- **`compute_cpm` divided by zero silently** for any sample with zero total counts, producing NaN/inf instead of an error. Now it raises, and names the sample.
-- **Constant-expression genes produced NaN p-values.** Welch's t-test is mathematically undefined when both groups have zero variance (e.g. an all-zero gene) — division by zero in the t-statistic. Rather than let NaN leak into the results table, special-cased it directly: identical constants means "not different" (p=1), differing constants means "as different as it gets" (p=0).
-- Wrote `bioinsight.pipeline.run_analysis()` so the five separate modules could be run as one call instead of manually chaining them every time.
-- Test count: 27 → 35.
+**Correctness pass (v0.3.1).** A full walk through the whole pipeline looking for the gap between "the code doesn't crash" and "the code is right." Found more than expected:
 
-Also fixed a duplicate test function name in `test_pathway_analysis.py` — Python silently let the second definition shadow the first, so half the intended coverage was never actually running. That kind of bug is exactly why "the tests pass" isn't proof of anything on its own.
+- Every `__init__.py` in the project except one was misspelled (`_init_.py`, `__init_.py`, even `__init.py`), and the top-level `bioinsight/__init__.py` didn't exist at all. Python's namespace-package fallback was quietly papering over this — exactly the kind of thing that works until it doesn't. Fixed all of them.
+- Pathway enrichment wasn't restricting to the tested background before computing overlaps, so a gene that was never even eligible to be "significant" could still inflate the enrichment p-value. Fixed by intersecting `significant_genes` and each `gene_set` with `background_genes` before touching the hypergeometric math.
+- `compute_cpm` divided by zero silently for any sample with zero total counts. Now it raises, and names the sample.
+- Constant-expression genes produced NaN p-values (Welch's t-test is undefined when both groups have zero variance). Special-cased it: identical constants means "not different" (p=1), differing constants means "as different as it gets" (p=0).
+- A duplicate test function name in `test_pathway_analysis.py` had Python silently letting the second definition shadow the first, so half the intended coverage was never actually running.
+- Wrote `bioinsight.pipeline.run_analysis()` so the modules could be run as one call instead of manually chained every time.
 
-## Aug 11 — session 2: humanize the docs, harden the remaining edges (v0.3.2)
+**Humanizing the docs surfaced more bugs (v0.3.2).** Rewriting docstrings to actually sound like someone who understands the function wrote them forced a close enough re-read to find real problems, not just prose ones:
 
-Two things happened together here, and they ended up reinforcing each other: rewriting the docs to actually sound like a person wrote them, and rewriting the docs *forced* a re-read of every function closely enough to find more bugs.
+- `compute_adjusted_pvalues` silently turned *every* adjusted p-value in the whole batch to NaN if even one input p-value was NaN (a `statsmodels` quirk). Now it checks and raises, naming the offending gene.
+- Same function crashed outright (`ZeroDivisionError`) on an empty p-value Series — found while writing a test for "what if `run_pathway_enrichment_analysis` gets an empty `gene_sets` dict," a real edge case, not a hypothetical one.
+- `plot_pca` handed you scikit-learn's fairly cryptic error below 2 samples or genes. Added a guard that says what's actually wrong.
+- `plot_volcano` could plot `-log10(0) = -inf` for a gene with an exact-zero adjusted p-value — newly possible once the constant-expression fix above started returning literal 0.0. Floored it before plotting.
+- `validate_counts` now warns (doesn't fail — it's a heuristic) if a matrix looks like it might be transposed.
+- Pathway enrichment's result columns were `'Pathway'`, `'P-value'`, etc. (Title Case), while DE results use snake_case. Renamed the pathway columns to match — a deliberate breaking change, made while nothing outside this repo depended on the old names yet.
+- DE functions now reject missing sample names, a sample listed twice in one group, and a sample appearing in both groups — each error names the actual sample, instead of a bare pandas `KeyError` or a silently nonsensical comparison.
 
-**Bugs found while writing better docstrings:**
-- `compute_adjusted_pvalues` would silently turn *every* adjusted p-value in the whole batch to NaN if even one input p-value was NaN (a `statsmodels` quirk, not obvious from the outside). Now it checks and raises, naming the offending gene.
-- Same function crashed outright (`ZeroDivisionError`) on an empty p-value Series — found this while writing a test for "what if `run_pathway_enrichment_analysis` gets an empty `gene_sets` dict," which is a real edge case, not a hypothetical one.
-- `plot_pca` handed you scikit-learn's fairly cryptic error if you gave it fewer than 2 samples or genes. Added a guard with an error that says what's actually wrong.
-- `plot_volcano` could plot `-log10(0) = -inf` for a gene with an exact-zero adjusted p-value — which became newly *possible* once the constant-expression fix above started returning literal 0.0. Floored it before plotting.
-- `validate_counts` now warns (doesn't fail — it's a heuristic, not a proof) if a matrix has way more columns than rows and very few rows, since that shape usually means someone loaded a transposed matrix.
+**Configurable significance thresholds (v0.3.3).** `adjusted_p_value < 0.05` and `abs(log_fold_change) > 1` were hardcoded into `run_differential_expression`. Neither number is statistically special — they're conventions — so baking them in meant anyone who disagreed had to edit the source. Added `alpha` and `lfc_threshold` as real parameters (same defaults, validated on the way in), threaded through `run_analysis` too.
 
-**A deliberate breaking change:** pathway enrichment's result columns were `'Pathway'`, `'P-value'`, `'Adjusted P-value'`, `'Overlap Count'` — Title Case with spaces, while the differential expression results use snake_case (`p_value`, `adjusted_p_value`). Renamed the pathway columns to match. This breaks anything already depending on the old names, but there was nothing outside this repo depending on them yet, and shipping two naming conventions in the same codebase forever felt worse than fixing it once while it's still cheap.
+**Pre-DE low-count filtering (v0.4.0).** Added `bioinsight.filtering.filter_low_count_genes(df, min_count=10, min_samples=2)` — every gene handed to `compute_pvalues` gets tested, and every test tightens the Benjamini-Hochberg correction for every *other* gene, so a gene that was one read away from zero everywhere was only ever going to be dead weight. Wired into `run_analysis` as opt-in (`min_count=None` by default) — the function itself always filters when called directly, but defaulting the *pipeline* to filter would have silently changed which genes get a p-value for every existing caller. QC still runs on the raw, unfiltered matrix first, so filtering can't skew a sample's own quality numbers.
 
-**Group validation:** DE functions now reject missing sample names, a sample listed twice in the same group, and a sample appearing in both groups — each with a message naming the actual sample, instead of a bare pandas `KeyError` or a silently nonsensical comparison (a sample compared against itself).
+**Splitting the docs: README as the pitch, this file as the record.** The README had grown into something that tried to be a landing page, an install guide, an API reference, and a statistics disclaimer at once — readable, but not *explanatory* the way a first-time visitor needs. Stripped it down to what BioInsight is, why it exists, and where it's headed; moved every code block, module table, and exact threshold out. This file exists so none of that reasoning actually gets lost — it just moved.
 
-Test count: 35 → 56 (constant-expression edge cases, empty gene sets, empty backgrounds, zero-library-size samples, PCA with too few samples, volcano with a zero p-value, the NaN-in-correction guard, and more).
+**The website (`docs/`, GitHub Pages).** Built a static site — plain HTML/CSS and a little vanilla JS, deliberately, because GitHub Pages needs zero build step and the site shouldn't need a toolchain the rest of the project doesn't have. Design direction was Apple × scientific software × developer tool: black/white/gray, one accent color, system fonts, no gradients or icon clutter. The volcano and PCA images on the site are genuine output — generated by calling BioInsight's own `plot_volcano`/`plot_pca` on a synthetic 4,000-gene dataset, with only the color palette adjusted for the marketing image (the library's actual plotting code wasn't touched). Every claim and number on the page traces back to the README or this file — nothing on the site exists that isn't true of the code.
 
-## Aug 11 — session 3: configurable significance thresholds (v0.3.3)
-
-`run_differential_expression` had `adjusted_p_value < 0.05` and `abs(log_fold_change) > 1` hardcoded into the significance call. Neither number is statistically special — they're conventions — so baking them into the function body meant anyone who disagreed with the convention had to edit the source. Added `alpha` and `lfc_threshold` as real parameters (same defaults, so nothing changes if you don't touch them), validated on the way in (`alpha` has to be in `(0, 1]`, `lfc_threshold` can't be negative), and threaded through `run_analysis` too.
-
-Test count: 56 → 60.
-
-## Aug 11 — session 4: pre-DE low-count filtering (v0.4.0)
-
-Added the second item off the roadmap: a `filtering` module with `filter_low_count_genes(df, min_count=10, min_samples=2)` — drop genes that never hit `min_count` raw reads in at least `min_samples` samples. Reasoning, not just "real pipelines do this": every gene handed to `compute_pvalues` gets tested, and every test tightens the Benjamini-Hochberg correction for every *other* gene. A gene that was one read away from zero in every sample was never going anywhere except into that correction as dead weight.
-
-Wired it into `run_analysis` as `min_count` (default `None`) and `min_samples` (default 2). QC still runs on the full, unfiltered matrix first — filtering before QC would let a dropped gene quietly change a sample's library size or genes-detected count without it showing up as what it is.
-
-**Default-off was deliberate, not an oversight.** The function itself always filters when you call it directly. But wiring it into `run_analysis` *on* by default would have silently changed which genes get a p-value for every existing caller, without them asking for it — and it would have broken every existing pipeline test's assumption that the output has the same genes as the input. A statistically-better default that surprises the people already using the tool isn't obviously better. Opt-in for now; worth revisiting once there's a real default threshold worth defending instead of an arbitrary 10/2.
-
-Test count: 60 → 68 (the filtering module directly: boundary conditions, invalid thresholds, min_samples bigger than the matrix, a filter that would remove every gene; plus one pipeline-level test that filtering actually removes the gene it's supposed to and leaves everything else alone).
+Test count across the day: 27 → 68.
 
 ---
 
@@ -86,3 +73,5 @@ Worth writing down what got *rejected*, not just what shipped:
 - **Validating matrix orientation as a hard error** instead of a warning. There's no way to be *certain* a wide, short matrix is transposed rather than just a small custom gene panel — it's a heuristic, and heuristics that hard-fail on a guess are worse than ones that speak up and let you decide.
 - **Assigning an arbitrary small p-value (like 1e-10) instead of exactly 0.0** for constant-expression genes with a clear between-group difference. Went with exactly 0.0 because it's honest about what the test is actually saying ("as significant as this method can express"), and handled the downstream consequence (the volcano plot's `-log10(0)`) directly instead of avoiding it by fudging the number.
 - **Reimplementing edgeR's `filterByExpr`** (which accounts for group sizes and normalized CPM, not just a flat raw-count cutoff) instead of a simple fixed threshold. `filterByExpr` is the more defensible method, but it's also a meaningfully bigger piece of statistical machinery to get right and test. Shipped the simple version now; the module docstring says outright that it isn't `filterByExpr`, so nobody mistakes "good enough to stop testing dead genes" for "the field-standard algorithm."
+- **Duplicating install/usage commands in both the README and this file**, for convenience. Rejected — two copies of the same command drift the moment one changes and nobody updates the other. The README has the one copy that matters for actually running the thing.
+- **A separate repo for the website** (e.g. a dedicated site repo, or the classic `username.github.io` pattern). Rejected in favor of `docs/` inside this repo: one source of truth, and a design/content update to the site can't quietly fall out of sync with the code it's describing.
