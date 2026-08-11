@@ -1,81 +1,107 @@
-from scipy.stats import hypergeom
 import pandas as pd
+from scipy.stats import hypergeom
 
 from bioinsight.differential_expression.methods import compute_adjusted_pvalues
 
+
 def compute_enrichment_pvalue(significant_genes: set[str], gene_set: set[str], background_genes: set[str]) -> float:
     """
-Compute the enrichment p-value using the hypergeometric test.
+    Hypergeometric test: is a gene set enriched among the significant genes,
+    more than expected by chance given the tested background?
 
-Parameters
-----------
-significant_genes : set[str]
-    A set of significant genes.
-gene_set : set[str]
-    A set of genes in the pathway or gene set of interest.
-background_genes : set[str]
-    A set of all background genes (the tested universe).
+    The result is only meaningful if ``background_genes`` is the actual
+    universe of genes that could have been called significant (e.g. every
+    gene that passed expression filtering in the DE step) — not every gene
+    in the genome. An inflated or mismatched background silently changes
+    what "enriched" means.
 
-Returns
--------
-float
-    The enrichment p-value.
-"""
-    # Restrict everything to the background universe first, so genes that
-    # were never actually tested (not part of the background) can't inflate
-    # the overlap or the "significant" gene count.
+    Parameters
+    ----------
+    significant_genes : set[str]
+        Genes called significant by the DE step.
+    gene_set : set[str]
+        Genes belonging to the pathway/gene set being tested.
+    background_genes : set[str]
+        The full tested gene universe.
+
+    Returns
+    -------
+    float
+        One-sided hypergeometric p-value (probability of seeing at least
+        this much overlap by chance).
+
+    Raises
+    ------
+    ValueError
+        If ``background_genes`` is empty — a hypergeometric test against
+        an empty universe has no defined answer (it silently evaluates to
+        NaN otherwise, which is worse than failing loudly).
+    """
+    if not background_genes:
+        raise ValueError(
+            "background_genes is empty — enrichment needs a non-empty "
+            "gene universe to test against."
+        )
+
+    # Genes outside the tested background were never eligible to be
+    # "significant" in the first place, so they shouldn't be able to
+    # inflate the overlap count or the significant-gene total.
     significant_genes = significant_genes & background_genes
     gene_set = gene_set & background_genes
 
-    # Number of significant genes in the gene set
-    k = len(significant_genes.intersection(gene_set))
-
-    # Total number of significant genes (restricted to background)
+    k = len(significant_genes & gene_set)
     n = len(significant_genes)
-
-    # Total number of genes in the gene set (restricted to background)
     K = len(gene_set)
-
-    # Total number of background genes
     N = len(background_genes)
-    
-    # Calculate the p-value using the hypergeometric distribution
-    p_value = hypergeom.sf(k - 1, N, K, n)
-    
-    return p_value
+
+    return hypergeom.sf(k - 1, N, K, n)
+
+
 def run_pathway_enrichment_analysis(significant_genes: set[str], gene_sets: dict[str, set[str]], background_genes: set[str]) -> pd.DataFrame:
     """
-Run pathway enrichment analysis for a set of significant genes against multiple gene sets.
+    Run ``compute_enrichment_pvalue`` across many gene sets at once and
+    Benjamini-Hochberg-correct the results.
 
-Parameters
-----------
+    Parameters
+    ----------
     significant_genes : set[str]
-        A set of significant genes.
+        Genes called significant by the DE step.
     gene_sets : dict[str, set[str]]
-        A dictionary where keys are gene set names and values are sets of genes in those gene sets.
+        Gene set name -> genes in that set (e.g. pathway definitions).
     background_genes : set[str]
-        A set of all background genes (the tested universe).
+        The full tested gene universe.
 
-Returns
--------
+    Returns
+    -------
     pd.DataFrame
-        A DataFrame containing the gene set names and their corresponding enrichment p-values.
-"""
+        One row per gene set, columns ``pathway``, ``p_value``,
+        ``adjusted_p_value``, ``overlap_count``.
+
+    Raises
+    ------
+    ValueError
+        If ``background_genes`` is empty (see ``compute_enrichment_pvalue``).
+    """
+    if not background_genes:
+        raise ValueError(
+            "background_genes is empty — enrichment needs a non-empty "
+            "gene universe to test against."
+        )
+
     background_significant = significant_genes & background_genes
 
     p_values = {}
     overlap_counts = {}
     for pathway_name, gene_set in gene_sets.items():
         p_values[pathway_name] = compute_enrichment_pvalue(significant_genes, gene_set, background_genes)
-        overlap_counts[pathway_name] = len(background_significant.intersection(gene_set & background_genes))
+        overlap_counts[pathway_name] = len(background_significant & (gene_set & background_genes))
+
     pvalues_series = pd.Series(p_values)
     adjusted = compute_adjusted_pvalues(pvalues_series)
-    results_df = pd.DataFrame({
-        'Pathway': list(gene_sets.keys()),
-        'P-value': list(p_values.values()),
-        'Adjusted P-value': list(adjusted),
-        'Overlap Count': list(overlap_counts.values())
+
+    return pd.DataFrame({
+        'pathway': list(gene_sets.keys()),
+        'p_value': list(p_values.values()),
+        'adjusted_p_value': list(adjusted),
+        'overlap_count': list(overlap_counts.values()),
     })
-    return results_df
-
-

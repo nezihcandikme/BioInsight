@@ -6,15 +6,32 @@ from dotenv import load_dotenv
 
 def explain_de_results(results_df: pd.DataFrame) -> str:
     """
-    Generates an explanation of differential expression results
+    Summarize a differential expression results table in plain language,
     using the Anthropic Claude API.
 
-    Args:
-        results_df (pd.DataFrame): A DataFrame containing differential
-            expression results.
+    This is a convenience layer for reading results faster, not a
+    statistical tool — it does not re-derive or double-check any numbers,
+    it just narrates what's already in ``results_df``. The underlying
+    analysis is still the exploratory method described in
+    ``bioinsight.differential_expression.methods``, so the caveats there
+    apply to whatever this function says too.
 
-    Returns:
-        str: The AI-generated explanation of the differential expression results.
+    Parameters
+    ----------
+    results_df : pd.DataFrame
+        Output of ``run_differential_expression`` — needs ``log_fold_change``,
+        ``adjusted_p_value``, and ``significant`` columns.
+
+    Returns
+    -------
+    str
+        A short natural-language summary of the results.
+
+    Raises
+    ------
+    KeyError
+        If ``ANTHROPIC_API_KEY`` is not set in the environment or a
+        ``.env`` file.
     """
     load_dotenv()
 

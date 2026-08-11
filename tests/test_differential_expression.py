@@ -1,35 +1,35 @@
 import pandas as pd
-import numpy as np
-from scipy import stats
 import pytest
-from statsmodels.stats.multitest import multipletests
 
-from bioinsight.differential_expression.methods import compute_log_fold_change, compute_pvalues, compute_adjusted_pvalues, run_differential_expression
+from bioinsight.differential_expression.methods import (
+    compute_log_fold_change,
+    compute_pvalues,
+    compute_adjusted_pvalues,
+    run_differential_expression,
+)
+
 
 def test_compute_log_fold_change():
-    # Create a sample DataFrame
     df = pd.DataFrame({
-    "sample1": [10, 5, 2],
-    "sample2": [20, 15, 4],
-    "sample3": [30, 25, 6],
+        "sample1": [10, 5, 2],
+        "sample2": [20, 15, 4],
+        "sample3": [30, 25, 6],
     }, index=["gene1", "gene2", "gene3"])
 
-    # Define groups
     group_1 = ['sample1', 'sample2']
     group_2 = ['sample3']
 
-    # Compute log fold change
     log_fc = compute_log_fold_change(df, group_1, group_2)
 
-    # Expected log fold change values
     expected_log_fc = pd.Series({
         'gene1': (10 + 20) / 2 - 30,
         'gene2': (5 + 15) / 2 - 25,
         'gene3': (2 + 4) / 2 - 6
     })
 
-    # Assert that the computed log fold change matches the expected values
     pd.testing.assert_series_equal(log_fc, expected_log_fc)
+
+
 def test_compute_pvalues_clear_difference():
     df = pd.DataFrame({
         "sample1": [1, 1, 1],
@@ -54,15 +54,19 @@ def test_compute_pvalues_no_difference():
     pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
 
     assert all(pvalues.apply(lambda p: p == pytest.approx(1.0, abs=0.01)))
+
+
 def test_compute_adjusted_pvalues_single():
     pvalues = pd.Series({"gene1": 0.03})
     adjusted = compute_adjusted_pvalues(pvalues)
     assert adjusted["gene1"] == pytest.approx(0.03)
 
+
 def test_compute_adjusted_pvalues_never_smaller():
     pvalues = pd.Series({"gene1": 0.01, "gene2": 0.2, "gene3": 0.04, "gene4": 0.5})
     adjusted = compute_adjusted_pvalues(pvalues)
     assert all(adjusted >= pvalues)
+
 
 def test_compute_adjusted_pvalues_equal_spacing():
     pvalues = pd.Series({
@@ -70,6 +74,19 @@ def test_compute_adjusted_pvalues_equal_spacing():
     })
     adjusted = compute_adjusted_pvalues(pvalues)
     assert all(adjusted.apply(lambda p: p == pytest.approx(0.05, abs=1e-6)))
+
+
+def test_compute_adjusted_pvalues_nan_input_raises():
+    # A single NaN silently poisons every adjusted p-value via statsmodels
+    # — that should never happen quietly, so this must raise instead.
+    import numpy as np
+
+    pvalues = pd.Series({"gene1": 0.01, "gene2": np.nan, "gene3": 0.03})
+
+    with pytest.raises(ValueError, match="gene2"):
+        compute_adjusted_pvalues(pvalues)
+
+
 def test_run_differential_expression():
     df = pd.DataFrame({
         "sample1": [10, 5, 2],
@@ -84,6 +101,8 @@ def test_run_differential_expression():
     assert "p_value" in results_df.columns
     assert "adjusted_p_value" in results_df.columns
     assert "significant" in results_df.columns
+
+
 def test_compute_pvalues_constant_expression_equal_means():
     df = pd.DataFrame({
         "sample1": [5, 5],
@@ -112,6 +131,23 @@ def test_compute_pvalues_constant_expression_different_means():
     assert all(pvalues.apply(lambda p: p == pytest.approx(0.0)))
 
 
+def test_run_differential_expression_no_nan_leaks_through_for_constant_genes():
+    # Regression test tying the constant-expression fix in compute_pvalues
+    # to the NaN guard in compute_adjusted_pvalues: a dataset mixing a
+    # constant gene with normal ones should produce a fully usable table.
+    df = pd.DataFrame({
+        "sample1": [5, 1, 3],
+        "sample2": [5, 2, 4],
+        "sample3": [5, 1000, 15],
+        "sample4": [5, 999, 13],
+    }, index=["constant_gene", "clear_gene", "ordinary_gene"])
+
+    results_df = run_differential_expression(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert not results_df["p_value"].isna().any()
+    assert not results_df["adjusted_p_value"].isna().any()
+
+
 def test_compute_pvalues_insufficient_samples():
     df = pd.DataFrame({
         "sample1": [10, 5, 2],
@@ -121,3 +157,39 @@ def test_compute_pvalues_insufficient_samples():
 
     with pytest.raises(ValueError):
         compute_pvalues(df, ["sample1", "sample2"], ["sample3"])
+
+
+def test_compute_pvalues_missing_sample_names_the_sample():
+    df = pd.DataFrame({
+        "sample1": [10, 5], "sample2": [20, 15],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="control_1"):
+        compute_pvalues(df, ["sample1", "control_1"], ["sample2"])
+
+
+def test_compute_log_fold_change_duplicate_sample_in_same_group_raises():
+    df = pd.DataFrame({
+        "sample1": [10, 5], "sample2": [20, 15],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="sample1"):
+        compute_log_fold_change(df, ["sample1", "sample1"], ["sample2"])
+
+
+def test_compute_log_fold_change_sample_in_both_groups_raises():
+    df = pd.DataFrame({
+        "sample1": [10, 5], "sample2": [20, 15],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="sample1"):
+        compute_log_fold_change(df, ["sample1"], ["sample1", "sample2"])
+
+
+def test_compute_log_fold_change_empty_group_raises():
+    df = pd.DataFrame({
+        "sample1": [10, 5], "sample2": [20, 15],
+    }, index=["gene1", "gene2"])
+
+    with pytest.raises(ValueError, match="group_2"):
+        compute_log_fold_change(df, ["sample1"], [])

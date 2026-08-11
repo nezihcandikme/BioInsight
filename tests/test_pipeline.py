@@ -58,11 +58,22 @@ def test_run_analysis_with_pathway_enrichment():
 def test_run_analysis_missing_sample_raises():
     df = _toy_counts()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="does_not_exist"):
         run_analysis(
             df,
             group_1=["sample1", "does_not_exist"],
             group_2=["sample3", "sample4"],
+        )
+
+
+def test_run_analysis_duplicate_sample_across_groups_raises():
+    df = _toy_counts()
+
+    with pytest.raises(ValueError, match="sample1"):
+        run_analysis(
+            df,
+            group_1=["sample1", "sample2"],
+            group_2=["sample1", "sample4"],
         )
 
 

@@ -1,74 +1,46 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
+# A real RNA-seq count matrix is lopsided: thousands of genes, a much
+# smaller handful of samples. If a matrix has more columns than rows and
+# very few rows, it's a decent bet someone loaded it transposed.
+_ORIENTATION_WARNING_MAX_ROWS = 30
+
 
 class CountMatrixError(Exception):
-    """
-    Base exception for errors found in a count matrix.
-
-    Specific count-matrix validation errors may inherit from this class.
-    """
+    """Base exception for problems found in a count matrix."""
     pass
 
 
 class NonIntegerCountsError(CountMatrixError):
-    """
-    Exception raised when a count matrix contains non-integer columns.
-    """
+    """Raised when a count matrix contains non-integer columns."""
     pass
 
 
 class NonUniqueIndexError(CountMatrixError):
-    """
-    Exception raised when a count matrix has a non-unique index.
-    """
+    """Raised when a count matrix has a non-unique (duplicated) gene index."""
     pass
 
 
 class NegativeCountsError(CountMatrixError):
-    """
-    Exception raised when a count matrix contains negative values.
-    """
-    pass
-class MissingValuesError(CountMatrixError):
-    """
-    Exception raised when a count matrix contains missing values.
-    """
+    """Raised when a count matrix contains negative values."""
     pass
 
+
+class MissingValuesError(CountMatrixError):
+    """Raised when a count matrix contains missing (NaN) values."""
+    pass
 
 
 def check_no_missing_values(df: pd.DataFrame) -> bool:
-    """
-    Check whether a DataFrame contains no missing values.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The DataFrame to validate.
-
-    Returns
-    -------
-    bool
-        True if there are no missing values, otherwise False.
-    """
+    """True if the DataFrame has no missing values."""
     return not df.isna().any().any()
 
 
 def check_all_integer(df: pd.DataFrame) -> bool:
-    """
-    Check whether every column in a DataFrame has an integer data type.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The DataFrame to validate.
-
-    Returns
-    -------
-    bool
-        True if every column has an integer dtype, otherwise False.
-    """
+    """True if every column has an integer dtype."""
     for dtype in df.dtypes:
         if not np.issubdtype(dtype, np.integer):
             return False
@@ -77,56 +49,54 @@ def check_all_integer(df: pd.DataFrame) -> bool:
 
 
 def check_unique_index(df: pd.DataFrame) -> bool:
-    """
-    Check whether the index of a DataFrame is unique.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The DataFrame to validate.
-
-    Returns
-    -------
-    bool
-        True if the index is unique, otherwise False.
-    """
+    """True if the DataFrame's index (gene IDs) has no duplicates."""
     return df.index.is_unique
 
 
 def check_nonnegative_counts(df: pd.DataFrame) -> bool:
-    """
-    Check whether all values in a DataFrame are non-negative.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The DataFrame to validate.
-
-    Returns
-    -------
-    bool
-        True if every value is greater than or equal to zero,
-        otherwise False.
-    """
+    """True if every value in the DataFrame is >= 0."""
     return (df >= 0).all().all()
+
+
+def check_likely_correct_orientation(df: pd.DataFrame) -> bool:
+    """
+    Heuristic check that ``df`` looks like genes-as-rows, samples-as-columns
+    (the orientation every other function in BioInsight assumes).
+
+    This can't be known for certain from the numbers alone — it's a sanity
+    check, not a proof. A matrix with more columns than rows and only a
+    handful of rows is flagged as "probably transposed" because that shape
+    is far more consistent with samples-as-rows than with a real gene list.
+    A legitimately tiny custom gene panel would also trip this, so treat a
+    False result as "go double check your orientation," not as evidence of
+    a bug on its own.
+    """
+    n_rows, n_cols = df.shape
+    return not (n_cols > n_rows and n_rows <= _ORIENTATION_WARNING_MAX_ROWS)
 
 
 def validate_counts(df: pd.DataFrame) -> None:
     """
-    Validate the structure and values of a count DataFrame.
+    Validate the structure and values of a raw count matrix.
 
-    All detected validation problems are collected and reported together.
+    Expects genes as rows and samples as columns, with non-negative integer
+    values and no missing data. All problems found are collected and raised
+    together (rather than stopping at the first one) so a single failed run
+    tells you everything that's wrong instead of one error at a time.
+
+    Also emits a ``UserWarning`` (not a hard failure) if the matrix's shape
+    looks like it might be transposed — see ``check_likely_correct_orientation``.
 
     Parameters
     ----------
     df : pd.DataFrame
-        The count DataFrame to validate.
+        The count matrix to validate.
 
     Raises
     ------
     CountMatrixError
-        If the DataFrame contains missing values, non-integer columns,
-        duplicate index values, negative counts, or multiple problems.
+        If the matrix contains missing values, non-integer columns,
+        duplicate gene IDs, negative counts, or a combination of these.
     """
     errors = []
 
@@ -149,30 +119,43 @@ def validate_counts(df: pd.DataFrame) -> None:
 
     if not check_nonnegative_counts(df):
         errors.append(NegativeCountsError("Counts must be non-negative."))
-    if not errors:
-        return
-    elif len(errors) == 1:
+
+    if len(errors) == 1:
         raise errors[0]
-    else:
-        raise CountMatrixError("\n".join(str(e) for e in errors))   
+    elif errors:
+        raise CountMatrixError("\n".join(str(e) for e in errors))
+
+    if not check_likely_correct_orientation(df):
+        warnings.warn(
+            f"This count matrix has {df.shape[1]} columns and only "
+            f"{df.shape[0]} rows. BioInsight expects genes as rows and "
+            "samples as columns — if that's backwards here, transpose "
+            "your input (df.T) before passing it in.",
+            stacklevel=2,
+        )
+
+
 def load_count_matrix(path: str) -> pd.DataFrame:
     """
-    Load a count matrix from a CSV file and validate its structure and values.
+    Load a count matrix from a CSV file and validate it via ``validate_counts``.
+
+    The first column of the CSV is used as the gene ID index; every other
+    column is treated as a sample.
 
     Parameters
     ----------
     path : str
-        The file path to the CSV file containing the count matrix.
+        Path to the CSV file.
 
     Returns
     -------
     pd.DataFrame
-        The validated count matrix as a DataFrame.
+        The validated, raw (not normalized) count matrix.
 
     Raises
     ------
     CountMatrixError
-        If the loaded DataFrame fails validation checks.
+        If the loaded DataFrame fails validation.
     """
     df = pd.read_csv(path, index_col=0)
     validate_counts(df)

@@ -82,12 +82,9 @@ def run_analysis(
         validate_counts(counts)
         raw_counts = counts
 
-    missing_samples = [s for s in group_1 + group_2 if s not in raw_counts.columns]
-    if missing_samples:
-        raise ValueError(
-            f"The following samples in group_1/group_2 are not columns of "
-            f"the count matrix: {missing_samples}"
-        )
+    # group_1/group_2 are re-checked (missing/duplicate/overlapping sample
+    # names) inside run_differential_expression via the shared
+    # _validate_groups helper, so there's no separate check needed here.
 
     results: dict = {"raw_counts": raw_counts}
 

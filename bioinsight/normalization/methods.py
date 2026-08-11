@@ -1,27 +1,39 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from bioinsight.core import library_size
+
 
 def compute_cpm(df: pd.DataFrame) -> pd.DataFrame:
     """
-Compute Counts Per Million (CPM) for a given DataFrame.
+    Normalize raw counts to Counts Per Million (CPM): each sample's counts
+    divided by that sample's total count, times one million.
 
-Parameters
-----------
-df : pd.DataFrame
-    Input DataFrame with raw counts.
+    CPM corrects for sequencing depth (library size) so samples become
+    comparable to each other. It does *not* correct for gene length, RNA
+    composition effects, or other technical biases — for those, TPM or a
+    method like DESeq2's median-of-ratios normalization would be needed
+    instead.
 
-Returns
--------
-pd.DataFrame
-    DataFrame with CPM values.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw count matrix, genes as rows, samples as columns.
 
-Raises
-------
-ValueError
-    If any sample (column) has a total count of zero, since CPM is
-    undefined (division by zero) for that sample.
-"""
+    Returns
+    -------
+    pd.DataFrame
+        Same shape as ``df``, with CPM values.
+
+    Raises
+    ------
+    ValueError
+        If any sample has a total count of zero. CPM divides by the
+        sample's total, so a zero-count sample isn't just noisy data —
+        it makes the whole column mathematically undefined (0/0). That
+        sample needs to be dropped or investigated before normalizing,
+        not silently turned into NaN or inf.
+    """
     total_counts = library_size(df)
 
     zero_total_samples = total_counts[total_counts == 0].index.tolist()
@@ -32,23 +44,32 @@ ValueError
             "the input count matrix before normalizing."
         )
 
-    cpm = df.div(total_counts, axis=1) * 1e6
+    return df.div(total_counts, axis=1) * 1e6
 
-    return cpm
 
 def log2_transform(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Apply log2 transformation to a given DataFrame.
+    Apply a log2(x + 1) transformation.
+
+    The +1 pseudocount avoids log2(0), which is undefined, at the cost of
+    a small compression of low counts. This is the conventional tradeoff
+    for RNA-seq-style data and matches what most exploratory tools do.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Input DataFrame with raw counts.
+        Non-negative expression values (typically CPM output from
+        ``compute_cpm``, not raw counts).
 
     Returns
     -------
     pd.DataFrame
-        DataFrame with log2-transformed values.
+        Same shape as ``df``, log2(x + 1)-transformed.
+
+    Raises
+    ------
+    ValueError
+        If ``df`` contains negative values.
     """
     if (df < 0).any().any():
         raise ValueError("Input DataFrame contains negative values. Log2 transformation is not defined for negative numbers.")
