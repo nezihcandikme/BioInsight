@@ -1,98 +1,116 @@
-# BioInsight
+BioInsight
 
-BioInsight is a small RNA-seq analysis pipeline, built in Python, that takes a raw gene count matrix and walks it through validation, quality control, normalization, exploratory differential expression, visualization, and pathway enrichment — with an optional layer that asks an LLM to summarize the results in plain language.
+BioInsight is a Python pipeline for taking an RNA-seq count matrix from “okay, I have a CSV” to actual exploratory results: validation, sample QC, normalization, differential expression, PCA and volcano plots, pathway enrichment, and—if you explicitly ask for it—an LLM-generated explanation of the output.
 
-It is a personal, actively developed project (currently v0.3.2), not a maintained scientific tool. If you're evaluating whether to depend on it: don't, yet. If you want to read clean-ish code that implements the standard early steps of an RNA-seq workflow, or you're learning the same things I was learning while writing it, it might be genuinely useful.
+I’m building it because I wanted to understand what happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so BioInsight is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-## What BioInsight is
+Current version: v0.3.2. It works, it has tests, and it is actively improving. It is also an educational project—not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
-BioInsight is what happens when "let's just validate a CSV of gene counts" doesn't stop being interesting. It started as a single function that checked whether a count matrix was well-formed, and it kept growing because every step of a real RNA-seq analysis raised the next question: now that the matrix is valid, is it any good? Now that I know it's decent, how do I make samples with different sequencing depths comparable? Now that they're comparable, which genes actually differ between conditions — and how do I stop myself from lying to myself about which differences are real?
+So what is this, exactly?
 
-Each answer became a module. The result is a working, testable, incrementally-built pipeline that mirrors the actual order a bioinformatician thinks in: load → check → normalize → test → visualize → interpret.
+BioInsight started with one extremely glamorous problem: validating a CSV.
 
-## Why I started building it
+Then the CSV raised questions.
 
-I'm a highschool student, and RNA-seq analysis was one of those things I understood in outline — "you count reads per gene, compare conditions, get a list of genes that changed" — without understanding any of the machinery underneath. The fastest way I know how to actually learn something is to implement it badly, watch it break, and fix it until it stops lying to me.
+Are these really non-negative integer counts?
 
-So BioInsight began as an exercise in learning how a count matrix moves through a pipeline: what "valid" even means for one, why library size differs sample to sample and what that does to your comparisons, why a plain difference of means isn't a fold change unless you're on a log scale, why testing thousands of genes at once makes p-values misleading unless you correct for it, and why "the code ran without an error" and "the biology this represents makes sense" are two completely different bars to clear. This project is the record of working through those questions in order, one module at a time.
+Are genes rows and samples columns, or did someone rotate reality by 90 degrees?
 
-## Current pipeline
+Does one sample have dramatically fewer reads than the others?
 
-```
-raw counts (CSV)
-      │
-      ▼
-  validate  ──────────  bioinsight.io.counts
-      │
-      ▼
-  sample QC  ─────────  bioinsight.qc.metrics
-      │
-      ▼
-  CPM + log2  ─────────  bioinsight.normalization.methods
-      │
-      ▼
-  differential expression ── bioinsight.differential_expression.methods
-      │
-      ├──▶ volcano / PCA plots ── bioinsight.visualization.plots
-      │
-      ├──▶ pathway enrichment ── bioinsight.pathway_analysis.methods
-      │
-      └──▶ plain-language summary (optional) ── bioinsight.ai_explanation.methods
-```
+How do I compare samples with different sequencing depths?
 
-`bioinsight.pipeline.run_analysis()` runs the whole thing in one call. Every step is also usable on its own if you want more control (or you're studying how one piece works).
+Which genes differ between conditions?
 
-## Installation
+If I test thousands of genes, how many “discoveries” are just statistical noise wearing a lab coat?
 
-Requires Python >= 3.9.
+Do those genes converge on any interesting pathways?
 
-```bash
+Each question became a module. The result is a small, testable RNA-seq pipeline that follows the same broad reasoning order as an analysis: load → validate → inspect → normalize → compare → visualize → interpret.
+
+The code running is step one. The numbers meaning what I think they mean is the actual objective.
+
+Why I’m building it
+
+I’m a high-school student learning programming, statistics, and computational biology by building things that are slightly beyond what I currently know how to build.
+
+Before BioInsight, I understood RNA-seq in the dangerously comfortable summary-version: count reads per gene, compare two conditions, find changed genes. That explanation is technically related to reality, but it skips nearly everything capable of ruining an analysis.
+
+Building the pipeline forced me to confront those missing layers directly: what makes a count matrix valid, why library size matters, why normalization is not one universal operation, why a difference of means only becomes a log fold change on the right scale, why thousands of simultaneous tests require correction, and why statistical significance is not the same thing as biological importance.
+
+BioInsight is the record of learning those lessons in code—one function, one broken test, and one increasingly specific error message at a time.
+
+The pipeline
+
+raw counts (CSV or DataFrame)
+          │
+          ▼
+      validation  ─────────────  bioinsight.io.counts
+          │
+          ▼
+      sample QC  ──────────────  bioinsight.qc.metrics
+          │
+          ▼
+      CPM + log2  ─────────────  bioinsight.normalization.methods
+          │
+          ▼
+      exploratory DE  ─────────  bioinsight.differential_expression.methods
+          │
+          ├──▶ volcano + PCA  ─  bioinsight.visualization.plots
+          │
+          ├──▶ enrichment  ─────  bioinsight.pathway_analysis.methods
+          │
+          └──▶ AI summary  ─────  bioinsight.ai_explanation.methods
+
+bioinsight.pipeline.run_analysis() connects the full workflow. Every module can also be called independently when you want to inspect an intermediate result, replace a step, or figure out exactly where the numbers went off the rails.
+
+Installation
+
+BioInsight requires Python 3.9 or newer.
+
 git clone https://github.com/nezihcandikme/BioInsight.git
 cd BioInsight
 pip install -e .
-```
 
-This pulls in pandas, numpy, scipy, statsmodels, matplotlib, and scikit-learn for the core pipeline, plus `anthropic` and `python-dotenv` for the optional AI summary layer.
+The core analysis uses pandas, NumPy, SciPy, statsmodels, Matplotlib, and scikit-learn.
 
-### Optional: AI-generated summaries
+Optional AI explanations
 
-`explain_de_results()` / `run_analysis(..., explain_results=True)` calls the Anthropic API. Set a key in a `.env` file at the project root:
+explain_de_results() and run_analysis(..., explain_results=True) can send a compact summary of the differential-expression table to the Anthropic API.
 
-```
+Add your key to a .env file in the project root:
+
 ANTHROPIC_API_KEY=your_key_here
-```
 
-Nothing else in the pipeline needs this — it's purely a "narrate my results" convenience on top of numbers that are already computed.
+This layer does not perform the statistics, verify the experiment, or magically discover biology. It narrates results that BioInsight has already computed. A confident paragraph generated from a weak analysis is still a weak analysis—just with better punctuation.
 
-## Quick-start example
+Quick start
 
-```python
 from bioinsight.pipeline import run_analysis
 
 results = run_analysis(
-    counts="counts.csv",                 # path to a CSV, or a pandas DataFrame
+    counts="counts.csv",                 # CSV path or pandas DataFrame
     group_1=["control_1", "control_2"],
     group_2=["treated_1", "treated_2"],
-    gene_sets={                          # optional: pathway enrichment
+    gene_sets={                          # optional pathway enrichment
         "pathway_1": {"ENSG001", "ENSG003"},
         "pathway_2": {"ENSG002", "ENSG004"},
     },
     background_genes={"ENSG001", "ENSG002", "ENSG003", "ENSG004"},
     generate_plots=True,
-    explain_results=False,               # set True to also get an AI summary
+    explain_results=False,
 )
 
-results["qc"]                       # per-sample QC metrics
-results["normalized"]               # CPM-normalized, log2-transformed matrix
-results["differential_expression"]  # log_fold_change, p_value, adjusted_p_value, significant
+results["qc"]
+results["normalized"]
+results["differential_expression"]
+results["pathway_enrichment"]
+
 results["volcano_fig"].savefig("volcano.png")
 results["pca_fig"].savefig("pca.png")
-results["pathway_enrichment"]       # pathway, p_value, adjusted_p_value, overlap_count
-```
 
-Or call the modules individually if you want to inspect each intermediate step:
+Want to see the gears instead of pressing the large pipeline button?
 
-```python
 from bioinsight.io.counts import load_count_matrix
 from bioinsight.qc.metrics import run_sample_qc
 from bioinsight.normalization.methods import compute_cpm, log2_transform
@@ -104,87 +122,148 @@ qc = run_sample_qc(counts)
 
 normalized = log2_transform(compute_cpm(counts))
 de_results = run_differential_expression(
-    normalized, group_1=["control_1", "control_2"], group_2=["treated_1", "treated_2"]
+    normalized,
+    group_1=["control_1", "control_2"],
+    group_2=["treated_1", "treated_2"],
 )
 
 fig = plot_volcano(de_results)
-```
 
-## Input format
+Input format
 
-A raw count matrix as a CSV (or `pandas.DataFrame`):
+BioInsight expects a raw count matrix supplied as a CSV file or pandas.DataFrame:
 
-- Genes as rows, identified by a unique gene ID in the first column (used as the index).
-- Samples as columns, with non-negative integer counts and no missing values.
+Genes are rows.
 
-```csv
+Samples are columns.
+
+The first CSV column contains unique gene identifiers and becomes the index.
+
+Counts are non-negative integers.
+
+Missing values are not allowed.
+
 gene_id,control_1,control_2,treated_1,treated_2
 ENSG001,10,15,8,120
 ENSG002,0,3,1,98
 ENSG003,120,98,140,15
 ENSG004,5,4,0,25
-```
 
-`validate_counts` / `load_count_matrix` will reject non-integer values, negative values, missing values, and duplicate gene IDs, and will warn (not fail) if the matrix's shape looks like it might be transposed.
+validate_counts() rejects non-integer counts, negative values, missing values, and duplicated gene IDs. It also warns when the matrix shape looks suspiciously transposed. That check is heuristic, because a DataFrame cannot explain its own experimental design no matter how intensely we stare at it.
 
-## Available modules
+Modules
 
-| Module | What it does |
-|---|---|
-| `bioinsight.io.counts` | Load and validate a raw count matrix; exception hierarchy for specific validation failures. |
-| `bioinsight.qc.metrics` | Library size, genes detected, and MAD-based outlier flagging per sample. |
-| `bioinsight.normalization.methods` | CPM normalization and log2(x + 1) transformation. |
-| `bioinsight.differential_expression.methods` | Mean-difference "log fold change," per-gene Welch's t-test, Benjamini-Hochberg correction. |
-| `bioinsight.visualization.plots` | Volcano plot and PCA plot. |
-| `bioinsight.pathway_analysis.methods` | Hypergeometric pathway/gene-set enrichment against a defined background. |
-| `bioinsight.ai_explanation.methods` | Optional plain-language summary of DE results via the Anthropic API. |
-| `bioinsight.pipeline` | `run_analysis()` — chains all of the above into one call. |
+Module
 
-## Statistical assumptions
+Responsibility
 
-Worth reading before trusting any output:
+bioinsight.io.counts
 
-- **CPM corrects for sequencing depth only.** It does not correct for gene length, RNA composition effects, or other technical/compositional biases. It is not TPM, and it is not DESeq2's median-of-ratios normalization.
-- **`log_fold_change` is `mean(group_1) - mean(group_2)`.** This is a genuine log2 fold change *only* if the input is already on a log2 scale (which is why `run_differential_expression` expects log2-CPM input, not raw counts). Feed it raw or linear-scale data and you get a difference of means — a real, computable number, just not the quantity its name implies.
-- **Differential expression uses Welch's t-test per gene**, not a count-based negative-binomial model. It does not model biological dispersion or the count-specific mean-variance relationship that tools like DESeq2 and edgeR are built around. It's a legitimate exploratory method; it is not a substitute for those tools when the result needs to support a real biological or clinical claim.
-- **Multiple-testing correction (Benjamini-Hochberg) is not optional.** Testing thousands of genes without it means a meaningful fraction of "significant" genes are noise, regardless of what the biology actually did.
-- **Pathway enrichment is only as correct as the background you give it.** The hypergeometric test's answer depends entirely on `background_genes` being the actual tested universe (e.g. every gene that passed expression filtering) — not "every gene in the genome." Get the background wrong and the p-values are answering a different question than the one you think you're asking.
-- **A p-value is not a biological conclusion.** BioInsight computes numbers; it doesn't know what your experiment means.
+Load count matrices, validate their structure, and fail with specific errors.
 
-## Current limitations
+bioinsight.qc.metrics
 
-- The DE method has not been benchmarked against DESeq2 or edgeR on a real dataset. Until that happens, treat its output as directionally interesting, not confirmed.
-- No independent filtering step before DE (e.g. dropping very-low-count genes), which real pipelines typically do before testing.
-- No batch-effect handling.
-- `run_differential_expression`'s significance thresholds (`adjusted_p_value < 0.05`, `|log_fold_change| > 1`) are hardcoded, not configurable.
-- Pathway enrichment takes gene sets as plain Python `dict`/`set` input — there's no built-in loader for standard formats (GMT, MSigDB, Enrichr) yet.
-- The AI explanation layer narrates existing numbers; it doesn't verify them, and it shouldn't be trusted more than the analysis it's describing.
+Calculate library size and detected genes; flag sample-level outliers using MAD.
 
-## Development history
+bioinsight.normalization.methods
 
-Built in a short, dense stretch — the git history reads almost one module a day:
+Compute CPM and apply log2(x + 1).
 
-- **Aug 6** — Project scaffolding, then `validate_counts`: the exception hierarchy, integer/negativity/uniqueness/missing-value checks. This is where "what does a *valid* count matrix even mean" got answered in code for the first time.
-- **Aug 7** — `load_count_matrix`, then sample QC: library size, genes detected, MAD-based outlier flagging (v0.0.2). CPM normalization followed the same day (v0.0.3 start) — the first time "sample A has more reads than sample B" had to become "and here's how I correct for that."
-- **Aug 8** — log2 transformation, then the first differential expression code: log fold change and Welch's t-test. This is roughly where "the code runs" stopped being good enough and "does this number mean what I think it means" took over.
-- **Aug 9** — Benjamini-Hochberg correction and a minimum-sample-size check for the t-test (v0.1); volcano and PCA plots (v0.2); hypergeometric pathway enrichment (v0.3).
-- **Aug 11** — A full correctness pass (v0.3.1): fixed broken package files, restricted enrichment to the tested background, guarded CPM and the t-test against zero-count and zero-variance edge cases, added `run_analysis()` to tie every module together, and wrote the tests that should have existed for all of the above from the start. Same day, a consistency/documentation pass (v0.3.2): more edge-case guards (empty gene sets, empty backgrounds, PCA with too few samples, NaN leaking through multiple-testing correction), per-sample error messages instead of generic ones, and this README rewrite.
+bioinsight.differential_expression.methods
 
-## Roadmap
+Compute mean-difference log fold changes, Welch’s t-tests, and Benjamini–Hochberg correction.
 
-1. Benchmark DE output against DESeq2/edgeR on a real public dataset — this is the one that actually matters before calling the DE module trustworthy.
-2. A pre-DE low-count filtering step.
-3. Configurable significance thresholds.
-4. GMT/MSigDB gene set loading for pathway enrichment.
-5. Optional integrations: Enrichr/g:Profiler for enrichment, gene annotation lookups, GEO/SRA dataset retrieval.
+bioinsight.visualization.plots
 
-Current mission, in short: make the statistical layer harder to fool before making it do more things.
+Generate volcano and PCA plots.
 
-## Running tests
+bioinsight.pathway_analysis.methods
 
-```bash
+Run hypergeometric pathway enrichment against a defined background universe.
+
+bioinsight.ai_explanation.methods
+
+Optionally summarize an existing DE table through the Anthropic API.
+
+bioinsight.pipeline
+
+Connect the modules through run_analysis().
+
+Statistical reality check
+
+This is the section to read before trusting a beautiful volcano plot.
+
+CPM corrects for sequencing depth—only sequencing depth. It does not correct gene length, RNA-composition effects, batch effects, or every other unpleasant thing hiding inside an experiment. It is not TPM, and it is not DESeq2’s median-of-ratios normalization.
+
+log_fold_change is calculated as mean(group_1) - mean(group_2). That represents a log2 fold change only when the input is already on a log2 scale. On raw or linear-scale data it is simply a difference of means with an inaccurately exciting name.
+
+Differential expression currently uses a per-gene Welch’s t-test. This is an exploratory comparison, not a count-aware negative-binomial model. It does not model the RNA-seq mean–variance relationship or biological dispersion the way DESeq2 and edgeR do. Use it to investigate data, not to support clinical claims.
+
+Benjamini–Hochberg correction is essential. Test enough genes and random chance will happily manufacture “significant” results for you. Multiple-testing correction controls that problem; it does not eliminate every possible false discovery.
+
+Enrichment depends on the background universe. background_genes should contain the genes that could actually have been selected by the analysis—usually the tested genes that passed filtering. Using every known gene in existence answers a different statistical question.
+
+A p-value is evidence under a model, not a biological verdict. BioInsight can compute and organize evidence. It cannot rescue a weak experimental design or decide what a biological result means in context.
+
+Current limitations
+
+BioInsight is useful enough to run and early enough to distrust responsibly.
+
+The DE implementation has not yet been benchmarked against DESeq2 or edgeR on a real public dataset.
+
+There is no independent low-count filtering step before differential expression.
+
+Batch effects are not modeled.
+
+The significance thresholds—adjusted p < 0.05 and |log_fold_change| > 1—are currently hardcoded.
+
+Pathway enrichment expects Python dict/set inputs; there is no GMT, MSigDB, or Enrichr loader yet.
+
+The AI explanation layer summarizes the existing table but does not independently validate it.
+
+BioInsight currently understands one scientific-data modality: bulk RNA-seq count matrices. The long-term goal is broader, but pretending it can analyze “any dataset” today would be an excellent way to make the README more advanced than the software.
+
+Development log
+
+The repository grew quickly because every completed step exposed the next missing one.
+
+August 6 — the CSV era. Created the package structure and count-matrix validation: integers, non-negativity, unique gene IDs, missing values, and an exception hierarchy. Apparently “read the file” was already several functions.
+
+August 7 — the data has entered the building. Added CSV loading, library size, detected-gene counts, MAD-based sample outliers, and CPM normalization. This was the point where different sequencing depths stopped being an abstract caveat and became something the code had to handle.
+
+August 8 — statistics have consequences. Added log2(x + 1), mean-difference effect sizes, and Welch’s t-tests. Also discovered that naming a number correctly requires knowing what scale produced it. Rude but fair.
+
+August 9 — thousands of p-values appeared. Added Benjamini–Hochberg correction, minimum sample-size validation, volcano plots, PCA, and hypergeometric enrichment. BioInsight officially became too large to describe as “the CSV thing.”
+
+August 11 — make it harder to fool. Repaired package initialization, restricted enrichment calculations to the tested background, guarded zero-count and zero-variance edge cases, connected everything through run_analysis(), expanded the test suite, added more specific error messages, and rewrote the documentation to state what the pipeline does—and what it absolutely does not do.
+
+Roadmap
+
+The long-term idea is larger than RNA-seq: a modality-aware system that can inspect scientific data, determine what kind of analysis is appropriate, ask for missing metadata, run validated methods, and produce a reproducible report.
+
+That goal is extremely far from “upload arbitrary CSV, receive truth,” so the next steps stay concrete:
+
+Benchmark BioInsight’s DE output against DESeq2 and edgeR on a real public RNA-seq dataset.
+
+Add independent low-count filtering before differential expression.
+
+Make significance and effect-size thresholds configurable.
+
+Add GMT/MSigDB gene-set loading.
+
+Add optional Enrichr or g enrichment, gene-annotation lookup, and GEO/SRA retrieval.
+
+Separate dataset understanding, analysis planning, deterministic computation, and explanation into explicit layers.
+
+Add new scientific-data modalities one validated adapter at a time.
+
+Current mission: make the statistical layer harder to fool before teaching it new tricks.
+
+Tests
+
 pip install -e ".[dev]"
 pytest
-```
 
-56 tests as of v0.3.2, covering both the happy path and the edge cases that actually break real analyses: zero-count samples, constant-expression genes, NaN propagation through multiple-testing correction, missing/duplicate/overlapping sample names, empty gene sets and empty backgrounds, and a couple of plotting edge cases (too few samples for PCA, a p-value of exactly zero on a volcano plot). CI runs the suite on Python 3.10–3.12 on every push.
+BioInsight currently has 56 tests covering both the normal workflow and the cases that tend to become 2 a.m. debugging sessions: zero-count samples, constant-expression genes, NaN propagation, missing or duplicated sample names, overlapping groups, empty gene sets, empty backgrounds, invalid PCA inputs, and plotting edge cases.
+
+GitHub Actions runs the suite on Python 3.10–3.12 after every push. Green tests do not prove the biology is correct, but red tests are at least considerate enough to tell us something is definitely wrong.
