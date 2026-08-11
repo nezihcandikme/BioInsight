@@ -15,11 +15,25 @@ Returns
 -------
 pd.DataFrame
     DataFrame with CPM values.
+
+Raises
+------
+ValueError
+    If any sample (column) has a total count of zero, since CPM is
+    undefined (division by zero) for that sample.
 """
     total_counts = library_size(df)
-    
+
+    zero_total_samples = total_counts[total_counts == 0].index.tolist()
+    if zero_total_samples:
+        raise ValueError(
+            f"Sample(s) {zero_total_samples} have zero total counts; "
+            "CPM is undefined for these samples. Remove them or check "
+            "the input count matrix before normalizing."
+        )
+
     cpm = df.div(total_counts, axis=1) * 1e6
-    
+
     return cpm
 
 def log2_transform(df: pd.DataFrame) -> pd.DataFrame:

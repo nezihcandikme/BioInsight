@@ -1,4 +1,6 @@
 -e git+https://github.com/nezihcandikme/BioInsight.git@cfe3a5679da78ee94bf3ec08532d55ece0dd4f2c#egg=bioinsight
+anthropic
+python-dotenv
 contourpy==1.3.3
 cycler==0.12.1
 fonttools==4.63.0

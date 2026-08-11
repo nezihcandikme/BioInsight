@@ -21,15 +21,21 @@ Returns
 float
     The enrichment p-value.
 """
+    # Restrict everything to the background universe first, so genes that
+    # were never actually tested (not part of the background) can't inflate
+    # the overlap or the "significant" gene count.
+    significant_genes = significant_genes & background_genes
+    gene_set = gene_set & background_genes
+
     # Number of significant genes in the gene set
     k = len(significant_genes.intersection(gene_set))
-    
-    # Total number of significant genes
+
+    # Total number of significant genes (restricted to background)
     n = len(significant_genes)
-    
-    # Total number of genes in the gene set
-    K = len(gene_set.intersection(background_genes))
-    
+
+    # Total number of genes in the gene set (restricted to background)
+    K = len(gene_set)
+
     # Total number of background genes
     N = len(background_genes)
     
@@ -43,23 +49,25 @@ Run pathway enrichment analysis for a set of significant genes against multiple 
 
 Parameters
 ----------
-significant_genes : set[str]
-    A set of significant genes.
-gene_sets : dict[str, set[str]]
-    A dictionary where keys are gene set names and values are sets of genes in those gene sets.
-background_genes : set[str]
-    A set of all background genes (the tested universe).
+    significant_genes : set[str]
+        A set of significant genes.
+    gene_sets : dict[str, set[str]]
+        A dictionary where keys are gene set names and values are sets of genes in those gene sets.
+    background_genes : set[str]
+        A set of all background genes (the tested universe).
 
 Returns
 -------
-pd.DataFrame
-    A DataFrame containing the gene set names and their corresponding enrichment p-values.
+    pd.DataFrame
+        A DataFrame containing the gene set names and their corresponding enrichment p-values.
 """
+    background_significant = significant_genes & background_genes
+
     p_values = {}
     overlap_counts = {}
     for pathway_name, gene_set in gene_sets.items():
         p_values[pathway_name] = compute_enrichment_pvalue(significant_genes, gene_set, background_genes)
-        overlap_counts[pathway_name] = len(significant_genes.intersection(gene_set))
+        overlap_counts[pathway_name] = len(background_significant.intersection(gene_set & background_genes))
     pvalues_series = pd.Series(p_values)
     adjusted = compute_adjusted_pvalues(pvalues_series)
     results_df = pd.DataFrame({

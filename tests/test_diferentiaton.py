@@ -84,6 +84,34 @@ def test_run_differential_expression():
     assert "p_value" in results_df.columns
     assert "adjusted_p_value" in results_df.columns
     assert "significant" in results_df.columns
+def test_compute_pvalues_constant_expression_equal_means():
+    df = pd.DataFrame({
+        "sample1": [5, 5],
+        "sample2": [5, 5],
+        "sample3": [5, 5],
+        "sample4": [5, 5],
+    }, index=["gene1", "gene2"])
+
+    pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert not pvalues.isna().any()
+    assert all(pvalues.apply(lambda p: p == pytest.approx(1.0)))
+
+
+def test_compute_pvalues_constant_expression_different_means():
+    df = pd.DataFrame({
+        "sample1": [1, 1],
+        "sample2": [1, 1],
+        "sample3": [9, 9],
+        "sample4": [9, 9],
+    }, index=["gene1", "gene2"])
+
+    pvalues = compute_pvalues(df, ["sample1", "sample2"], ["sample3", "sample4"])
+
+    assert not pvalues.isna().any()
+    assert all(pvalues.apply(lambda p: p == pytest.approx(0.0)))
+
+
 def test_compute_pvalues_insufficient_samples():
     df = pd.DataFrame({
         "sample1": [10, 5, 2],

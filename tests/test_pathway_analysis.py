@@ -24,18 +24,20 @@ def test_compute_enrichment_pvalue_perfect_overlap():
     p_value = compute_enrichment_pvalue(significant, gene_set, background)
     assert p_value < 0.01
 
-def test_run_pathway_enrichment_analysis():
-    background = {f"gene{i}" for i in range(1, 101)}
-    significant = {f"gene{i}" for i in range(1, 11)}
+def test_compute_enrichment_pvalue_ignores_genes_outside_background():
+    background = {f"gene{i}" for i in range(1, 21)}
+    gene_set = {f"gene{i}" for i in range(1, 11)} | {"not_in_background_1"}
+    significant = {f"gene{i}" for i in range(1, 11)} | {"not_in_background_2"}
 
-    gene_sets = {
-        "pathway_A": {f"gene{i}" for i in range(1, 11)},   # tam örtüşme
-        "pathway_B": {f"gene{i}" for i in range(91, 101)},  # hiç örtüşme yok
-    }
+    with_extra = compute_enrichment_pvalue(significant, gene_set, background)
+    without_extra = compute_enrichment_pvalue(
+        {f"gene{i}" for i in range(1, 11)},
+        {f"gene{i}" for i in range(1, 11)},
+        background,
+    )
 
-    results_df = run_pathway_enrichment_analysis(significant, gene_sets, background)
+    assert with_extra == pytest.approx(without_extra)
 
-    assert results_df.loc["pathway_A" if "Pathway" not in results_df.columns else 0]
 
 def test_run_pathway_enrichment_analysis():
     background = {f"gene{i}" for i in range(1, 101)}

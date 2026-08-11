@@ -28,6 +28,16 @@ def test_compute_cpm():
     assert cpm_df.iloc[0, 1] == pytest.approx(266666.67, rel=1e-2)
     assert cpm_df.iloc[0, 2] == pytest.approx(291666.67, rel=1e-2)
 
+def test_compute_cpm_zero_total_raises():
+    df = pd.DataFrame({
+        'Sample1': [100, 200, 300],
+        'Sample2': [0, 0, 0],
+    })
+
+    with pytest.raises(ValueError):
+        compute_cpm(df)
+
+
 def test_log2_transform():
     # Create a sample DataFrame with raw counts
     data = {
