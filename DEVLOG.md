@@ -66,6 +66,16 @@ Test count: 35 → 56 (constant-expression edge cases, empty gene sets, empty ba
 
 Test count: 56 → 60.
 
+## Aug 11 — session 4: pre-DE low-count filtering (v0.4.0)
+
+Added the second item off the roadmap: a `filtering` module with `filter_low_count_genes(df, min_count=10, min_samples=2)` — drop genes that never hit `min_count` raw reads in at least `min_samples` samples. Reasoning, not just "real pipelines do this": every gene handed to `compute_pvalues` gets tested, and every test tightens the Benjamini-Hochberg correction for every *other* gene. A gene that was one read away from zero in every sample was never going anywhere except into that correction as dead weight.
+
+Wired it into `run_analysis` as `min_count` (default `None`) and `min_samples` (default 2). QC still runs on the full, unfiltered matrix first — filtering before QC would let a dropped gene quietly change a sample's library size or genes-detected count without it showing up as what it is.
+
+**Default-off was deliberate, not an oversight.** The function itself always filters when you call it directly. But wiring it into `run_analysis` *on* by default would have silently changed which genes get a p-value for every existing caller, without them asking for it — and it would have broken every existing pipeline test's assumption that the output has the same genes as the input. A statistically-better default that surprises the people already using the tool isn't obviously better. Opt-in for now; worth revisiting once there's a real default threshold worth defending instead of an arbitrary 10/2.
+
+Test count: 60 → 68 (the filtering module directly: boundary conditions, invalid thresholds, min_samples bigger than the matrix, a filter that would remove every gene; plus one pipeline-level test that filtering actually removes the gene it's supposed to and leaves everything else alone).
+
 ---
 
 ## Decisions I looked at and didn't make
@@ -75,3 +85,4 @@ Worth writing down what got *rejected*, not just what shipped:
 - **Silently supporting both old and new pathway column names**, instead of a clean breaking rename. Would've avoided the breaking change, but permanently — every future reader would have to know two names meant the same thing for no active reason. Rejected.
 - **Validating matrix orientation as a hard error** instead of a warning. There's no way to be *certain* a wide, short matrix is transposed rather than just a small custom gene panel — it's a heuristic, and heuristics that hard-fail on a guess are worse than ones that speak up and let you decide.
 - **Assigning an arbitrary small p-value (like 1e-10) instead of exactly 0.0** for constant-expression genes with a clear between-group difference. Went with exactly 0.0 because it's honest about what the test is actually saying ("as significant as this method can express"), and handled the downstream consequence (the volcano plot's `-log10(0)`) directly instead of avoiding it by fudging the number.
+- **Reimplementing edgeR's `filterByExpr`** (which accounts for group sizes and normalized CPM, not just a flat raw-count cutoff) instead of a simple fixed threshold. `filterByExpr` is the more defensible method, but it's also a meaningfully bigger piece of statistical machinery to get right and test. Shipped the simple version now; the module docstring says outright that it isn't `filterByExpr`, so nobody mistakes "good enough to stop testing dead genes" for "the field-standard algorithm."

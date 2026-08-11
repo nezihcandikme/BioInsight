@@ -90,6 +90,35 @@ def test_run_analysis_passes_through_de_thresholds():
     assert lenient_sig >= strict_sig
 
 
+def test_run_analysis_min_count_filters_low_count_genes():
+    df = _toy_counts()
+    # gene4 = [8, 11, 4, 7] only clears a count of 10 in one sample
+    # (sample2) -- below min_samples=2, so it should be the only gene
+    # filtered out here.
+
+    unfiltered = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        generate_plots=False,
+    )
+    filtered = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        min_count=10,
+        min_samples=2,
+        generate_plots=False,
+    )
+
+    assert "filtered_counts" not in unfiltered
+    assert list(unfiltered["differential_expression"].index) == list(df.index)
+
+    assert "filtered_counts" in filtered
+    assert "gene4" not in filtered["filtered_counts"].index
+    assert list(filtered["differential_expression"].index) == ["gene1", "gene2", "gene3"]
+
+
 def test_run_analysis_duplicate_sample_across_groups_raises():
     df = _toy_counts()
 

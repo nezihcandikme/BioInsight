@@ -4,7 +4,7 @@ BioInsight is a Python pipeline for taking an RNA-seq count matrix from "okay, I
 
 I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so BioInsight is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-Current version: v0.3.3. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+Current version: v0.4.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
 So what is this, exactly?
 
@@ -54,7 +54,7 @@ Where it's headed
 
 The long-term idea is bigger than RNA-seq: something that can look at a scientific dataset, figure out what kind of analysis actually applies to it, ask for whatever context is missing, run validated methods instead of guessing, and explain the result honestly instead of impressively.
 
-That's a long way off from "upload arbitrary CSV, receive truth," so the near-term plan stays concrete: check the current results against DESeq2 and edgeR on a real public dataset, filter out genes that are barely expressed before testing them, make pathway enrichment accept standard gene-set formats, and only then start adding the more ambitious layers.
+That's a long way off from "upload arbitrary CSV, receive truth," so the near-term plan stays concrete: check the current results against DESeq2 and edgeR on a real public dataset, make pathway enrichment accept standard gene-set formats, and only then start adding the more ambitious layers. Barely-expressed genes no longer get tested by default reasoning alone — that filter exists now, you just have to turn it on.
 
 Current mission, in short: make the statistical layer harder to fool before teaching it new tricks.
 

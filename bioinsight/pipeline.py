@@ -17,6 +17,7 @@ import pandas as pd
 
 from bioinsight.io.counts import load_count_matrix, validate_counts
 from bioinsight.qc.metrics import run_sample_qc
+from bioinsight.filtering.methods import filter_low_count_genes
 from bioinsight.normalization.methods import compute_cpm, log2_transform
 from bioinsight.differential_expression.methods import run_differential_expression
 from bioinsight.visualization.plots import plot_volcano, plot_pca
@@ -29,6 +30,8 @@ def run_analysis(
     group_2: list[str],
     gene_sets: dict[str, set[str]] | None = None,
     background_genes: set[str] | None = None,
+    min_count: int | None = None,
+    min_samples: int = 2,
     alpha: float = 0.05,
     lfc_threshold: float = 1.0,
     generate_plots: bool = True,
@@ -58,6 +61,17 @@ def run_analysis(
     background_genes : set[str], optional
         The background gene universe for enrichment analysis. Required if
         ``gene_sets`` is provided.
+    min_count : int, optional
+        If given, genes are filtered via ``filter_low_count_genes`` (kept
+        only if at least ``min_samples`` samples have >= ``min_count`` raw
+        reads) before normalization and DE. Default ``None`` — no
+        filtering, to keep existing callers' behavior unchanged. Turning
+        this on is recommended for real data: untested, barely-expressed
+        genes cost statistical power for every other gene through the
+        multiple-testing correction, for no benefit.
+    min_samples : int, optional
+        Passed through to ``filter_low_count_genes`` when ``min_count`` is
+        set. Default 2. Ignored if ``min_count`` is ``None``.
     alpha : float, optional
         Adjusted p-value cutoff passed through to ``run_differential_expression``.
         Default 0.05.
@@ -78,7 +92,10 @@ def run_analysis(
         A dictionary that may contain the following keys:
         - "raw_counts": the validated raw count matrix
         - "qc": per-sample QC metrics (library size, genes detected, outlier flags)
+        - "filtered_counts": raw counts after low-count filtering (only if
+          ``min_count`` is set)
         - "normalized": CPM-normalized, log2-transformed expression matrix
+          (computed from filtered counts if filtering was applied)
         - "differential_expression": DE results (log fold change, p-values, significance)
         - "volcano_fig", "pca_fig": matplotlib Figures (if generate_plots=True)
         - "pathway_enrichment": enrichment results (if gene_sets/background_genes provided)
@@ -96,9 +113,17 @@ def run_analysis(
 
     results: dict = {"raw_counts": raw_counts}
 
+    # QC runs on the raw, unfiltered matrix — dropping low-count genes
+    # first would quietly change library size and genes-detected numbers
+    # out from under the sample-quality check.
     results["qc"] = run_sample_qc(raw_counts)
 
-    cpm = compute_cpm(raw_counts)
+    counts_for_analysis = raw_counts
+    if min_count is not None:
+        counts_for_analysis = filter_low_count_genes(raw_counts, min_count=min_count, min_samples=min_samples)
+        results["filtered_counts"] = counts_for_analysis
+
+    cpm = compute_cpm(counts_for_analysis)
     normalized = log2_transform(cpm)
     results["normalized"] = normalized
 
