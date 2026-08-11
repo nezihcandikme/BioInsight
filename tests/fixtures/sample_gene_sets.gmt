@@ -1,0 +1,4 @@
+PATHWAY_A	https://example.org/pathway_a	GENE1	GENE2	GENE3
+PATHWAY_B	https://example.org/pathway_b	GENE4	GENE5
+
+PATHWAY_C	https://example.org/pathway_c	GENE1	GENE6	GENE7	GENE8
