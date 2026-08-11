@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioInsight — An RNA-seq pipeline that shows its work</title>
+  <meta name="description" content="BioInsight takes an RNA-seq count matrix from 'okay, I have a CSV' to validated, tested, exploratory results: QC, normalization, differential expression, visualization, and pathway enrichment." />
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta property="og:title" content="BioInsight — An RNA-seq pipeline that shows its work" />
+  <meta property="og:description" content="Validation, QC, normalization, exploratory differential expression, and pathway enrichment — one small pipeline, every step inspectable." />
+  <meta property="og:type" content="website" />
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="container">
+      <a class="brand" href="#top">
+        <img src="assets/favicon.svg" alt="" />
+        BioInsight
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="#what">Overview</a></li>
+          <li><a href="#pipeline">Pipeline</a></li>
+          <li><a href="#capabilities">Capabilities</a></li>
+          <li><a href="#output">Output</a></li>
+          <li><a href="#why">Why</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-cta">
+        <a class="btn btn-secondary btn-sm" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">GitHub</a>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- 1. HERO -->
+    <section class="hero">
+      <div class="container">
+        <span class="eyebrow">RNA-seq analysis pipeline · v0.4.0</span>
+        <h1>Turn a count matrix<br />into something you can trust.</h1>
+        <p class="lede">
+          Validation, quality control, normalization, exploratory differential
+          expression, and pathway enrichment — one small pipeline, and every
+          step is inspectable, not a black box.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">View on GitHub</a>
+          <a class="btn btn-secondary" href="#pipeline">See how it works</a>
+        </div>
+
+        <div class="hero-window reveal">
+          <div class="window">
+            <div class="window-chrome">
+              <span></span><span></span><span></span>
+            </div>
+            <pre><code><span class="c">$ pip install -e .</span>
+
+<span class="k">from</span> <span class="n">bioinsight.pipeline</span> <span class="k">import</span> <span class="n">run_analysis</span>
+
+<span class="n">results</span> = <span class="n">run_analysis</span>(
+    counts=<span class="s">"counts.csv"</span>,
+    group_1=[<span class="s">"control_1"</span>, <span class="s">"control_2"</span>, <span class="s">"control_3"</span>],
+    group_2=[<span class="s">"treated_1"</span>, <span class="s">"treated_2"</span>, <span class="s">"treated_3"</span>],
+    min_count=<span class="n">10</span>,
+)
+
+<span class="c">&gt;&gt;&gt; results["differential_expression"]["significant"].sum()</span>
+<span class="n">207</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. WHAT BIOINSIGHT DOES -->
+    <section id="what" class="section-border-top">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Overview</span>
+          <h2>A CSV raises more questions than you'd think.</h2>
+          <p>
+            BioInsight started as a single function that checked whether a
+            count matrix was valid. Each answer it found raised the next
+            question, and each question became a piece of the pipeline.
+          </p>
+        </div>
+
+        <div class="explainer reveal">
+          <div class="explainer-block">
+            <span class="num">01</span>
+            <h3>Is the data even usable?</h3>
+            <p>Non-negative integers, no duplicate gene IDs, no missing values, correct orientation — checked before anything else runs.</p>
+          </div>
+          <div class="explainer-block">
+            <span class="num">02</span>
+            <h3>Can these samples be compared?</h3>
+            <p>Different sequencing depths, dead or outlier samples, low-count genes — normalized and filtered before they can quietly bias a result.</p>
+          </div>
+          <div class="explainer-block">
+            <span class="num">03</span>
+            <h3>What actually changed?</h3>
+            <p>Per-gene testing, correction for running thousands of tests at once, and a result that says what it does and doesn't mean.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. PIPELINE -->
+    <section id="pipeline" class="pipeline section-border-top">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">The pipeline</span>
+          <h2>Load → validate → inspect → normalize → compare → visualize → interpret.</h2>
+          <p>The same order an analysis actually follows. Every stage is also a function you can call on its own.</p>
+        </div>
+
+        <div class="pipeline-flow reveal">
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">1</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Count Matrix</h4>
+            <p>A CSV or DataFrame — genes as rows, samples as columns.</p>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">2</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Validation</h4>
+            <p>Types, missing values, duplicate IDs, and a heuristic check for a transposed matrix.</p>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">3</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Quality Control</h4>
+            <p>Library size, genes detected, and MAD-based outlier flags per sample.</p>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">4</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Normalization</h4>
+            <p>CPM for sequencing depth, log2 scale.</p>
+            <span class="tag">+ optional low-count filtering</span>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">5</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Differential Expression</h4>
+            <p>Welch's t-test per gene, Benjamini-Hochberg correction, volcano and PCA plots.</p>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">6</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Pathway Analysis</h4>
+            <p>Hypergeometric enrichment against a background you define — not "every gene that exists."</p>
+          </div>
+
+          <div class="pipeline-step">
+            <div class="step-top">
+              <div class="step-num">7</div>
+              <div class="step-line"></div>
+            </div>
+            <h4>Interpretation</h4>
+            <p>Optional plain-language summary of the results, generated on request.</p>
+            <span class="tag">opt-in</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. CAPABILITIES -->
+    <section id="capabilities" class="section-border-top">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Capabilities</span>
+          <h2>What's actually implemented.</h2>
+          <p>No placeholders — every item below is a real, tested function you can call today.</p>
+        </div>
+
+        <div class="capabilities-grid reveal">
+          <div class="capability">
+            <h3>Validation with specifics</h3>
+            <p>Errors name the column and the problem, not just "invalid data."</p>
+          </div>
+          <div class="capability">
+            <h3>Sample QC</h3>
+            <p>Library size, genes detected, MAD-based outlier detection.</p>
+          </div>
+          <div class="capability">
+            <h3>Low-count filtering</h3>
+            <p>Drop genes that never had a chance of being tested meaningfully.</p>
+          </div>
+          <div class="capability">
+            <h3>CPM + log2 normalization</h3>
+            <p>Puts samples with different sequencing depths on a comparable scale.</p>
+          </div>
+          <div class="capability">
+            <h3>Exploratory DE</h3>
+            <p>Welch's t-test, Benjamini-Hochberg correction, configurable thresholds.</p>
+          </div>
+          <div class="capability">
+            <h3>Volcano &amp; PCA plots</h3>
+            <p>Generated straight from the results — no separate plotting step to forget.</p>
+          </div>
+          <div class="capability">
+            <h3>Pathway enrichment</h3>
+            <p>Hypergeometric test, always relative to a background you explicitly define.</p>
+          </div>
+          <div class="capability">
+            <h3>Optional AI summary</h3>
+            <p>Narrates results that are already computed. Doesn't verify them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 + 6. CODE DEMO + OUTPUT -->
+    <section id="output" class="section-border-top">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">In practice</span>
+          <h2>Real output, from real code.</h2>
+          <p>The plots below were generated by BioInsight's own <code>plot_volcano</code> and <code>plot_pca</code> on a synthetic 4,000-gene dataset — same functions, same defaults you'd call yourself.</p>
+        </div>
+
+        <div class="output-grid reveal">
+          <figure class="figure">
+            <img src="assets/volcano-demo.png" alt="Volcano plot generated by BioInsight: log fold change on the x-axis, -log10 adjusted p-value on the y-axis, significant genes highlighted." loading="lazy" />
+            <figcaption>Volcano plot — every point is a gene BioInsight actually tested, not a mockup.</figcaption>
+          </figure>
+          <figure class="figure">
+            <img src="assets/pca-demo.png" alt="PCA plot generated by BioInsight showing control and treated samples separating along the first principal component." loading="lazy" />
+            <figcaption>PCA — check whether your samples separate the way your experiment says they should, before you trust anything downstream.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. WHY -->
+    <section id="why" class="why section-border-top">
+      <div class="container">
+        <div class="why-inner reveal">
+          <span class="eyebrow">Why this exists</span>
+          <h2 style="font-size: clamp(28px, 4vw, 40px); font-weight: 600; letter-spacing: -0.01em; margin: 0 0 32px;">
+            Built by a high-school student learning how easy it is to be confidently wrong.
+          </h2>
+          <p>
+            Before BioInsight, RNA-seq made sense in the dangerously comfortable
+            summary-version: count reads per gene, compare two conditions, find
+            changed genes. That explanation is technically related to reality,
+            but it skips nearly everything capable of ruining an analysis.
+          </p>
+          <p>
+            Building the pipeline forced a confrontation with the missing
+            layers: what makes a count matrix valid, why library size matters,
+            why a difference of means only becomes a fold change on the right
+            scale, why testing thousands of genes at once requires correction,
+            and why statistical significance isn't the same thing as biological
+            importance.
+          </p>
+
+          <blockquote class="pull-quote">
+            "Turns out there are approximately seventeen ways to produce
+            convincing nonsense before breakfast."
+          </blockquote>
+
+          <p>
+            So BioInsight is currently focused on making those seventeen ways
+            loud, testable, and difficult to ignore — one function, one broken
+            test, and one increasingly specific error message at a time.
+          </p>
+
+          <p class="why-signoff">Every decision behind the code — what shipped, what broke, what got rejected — is written down in <a href="https://github.com/nezihcandikme/BioInsight/blob/main/DEVLOG.md" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: underline;">DEVLOG.md</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. CTA -->
+    <section class="cta section-border-top">
+      <div class="container">
+        <div class="reveal">
+          <span class="eyebrow">Get started</span>
+          <h2>Clone it, install it, question the output.</h2>
+          <p>BioInsight is early, honest about it, and built in the open. Read the source before you trust the numbers.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">View on GitHub</a>
+            <a class="btn btn-secondary" href="https://github.com/nezihcandikme/BioInsight#readme" target="_blank" rel="noopener">Read the README</a>
+          </div>
+          <div class="cta-install">
+            <span class="prompt">$</span>
+            <span>git clone https://github.com/nezihcandikme/BioInsight.git &amp;&amp; pip install -e .</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <a class="footer-brand" href="#top">
+          <img src="assets/favicon.svg" alt="" />
+          BioInsight
+        </a>
+        <ul class="footer-links">
+          <li><a href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/nezihcandikme/BioInsight#readme" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/nezihcandikme/BioInsight/blob/main/DEVLOG.md" target="_blank" rel="noopener">Devlog</a></li>
+        </ul>
+      </div>
+      <p class="footer-note">&copy; <span id="year">2026</span> BioInsight. An educational project — not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
