@@ -4,7 +4,7 @@ BioInsight is a Python pipeline for taking an RNA-seq count matrix from "okay, I
 
 I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so BioInsight is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-Current version: v0.5.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+Current version: v0.6.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
 So what is this, exactly?
 
@@ -44,7 +44,7 @@ What it does, roughly
 
 Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions, the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
 
-Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end.
+Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between.
 
 Where it stands
 

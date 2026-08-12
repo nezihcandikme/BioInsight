@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioinsight"
-version = "0.5.0"
-description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression, visualization, and pathway enrichment (with GMT/MSigDB gene-set loading)."
+version = "0.6.0"
+description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression, visualization, and pathway enrichment (with GMT/MSigDB gene-set loading), runnable as a library or a CLI."
 requires-python = ">=3.9"
 dependencies = [
     "pandas",
@@ -20,6 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+
+[project.scripts]
+bioinsight = "bioinsight.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -529,7 +529,7 @@ section {
 
 .capabilities-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1px;
   background: var(--border-soft);
   border: 1px solid var(--border-soft);
@@ -539,7 +539,7 @@ section {
 
 .capability {
   background: var(--bg);
-  padding: 32px 28px;
+  padding: 28px 20px;
 }
 
 .capability h3 {
@@ -557,6 +557,10 @@ section {
 @media (max-width: 900px) {
   .capabilities-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .capability {
+    padding: 28px;
   }
 }
 

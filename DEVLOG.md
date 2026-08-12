@@ -67,6 +67,24 @@ Test count across the day: 27 → 75.
 
 ---
 
+## Aug 12 — a CLI, and cleaning up after myself
+
+**Command-line entry point (v0.6.0).** Every single use of BioInsight so far meant writing a Python script that imports `run_analysis` and calls it — fine for me, annoying for literally anyone else who just wants to point the pipeline at a CSV and get results back. Added `bioinsight/cli.py`: an argparse wrapper around `run_analysis`, wired up as a real console script (`[project.scripts]` in `pyproject.toml`), so `pip install`-ing the package gives you a `bioinsight` command, not just an importable package.
+
+It's deliberately thin — no logic of its own beyond argument parsing and writing outputs to disk (DE table and QC table as CSV, plots as PNG, pathway enrichment as CSV if a `--gmt` file was given, an explanation as a text file if `--explain` was passed). All the actual pipeline logic still lives in `run_analysis`; the CLI's only real design decision was what to do about a background gene universe for enrichment when the user doesn't hand-specify one with `--background` — it defaults to every gene in the input matrix, which is the same "everything that could have been tested" reasoning the library docstring already commits to elsewhere, just applied automatically instead of requiring the caller to know to do it.
+
+Errors a user is likely to actually hit — a missing file, an unknown sample name, a malformed GMT line — get caught and printed as a one-line `bioinsight: ...` message with exit code 1, instead of a Python traceback. Anything outside that expected set of exceptions is left to crash loudly, on purpose: a CLI that swallows every exception into a generic "something went wrong" is worse than one that occasionally shows you a traceback for a real bug.
+
+Tested it two ways: a normal pytest suite (`tests/test_cli.py`, 7 tests — happy path, `--no-plots`, `--gmt`, `--min-count` filtering, and three failure modes) calling `main()` directly, and then actually installing the package into a clean venv and running the real `bioinsight` command against a real CSV, because a CLI's argument parser and entry-point wiring are exactly the kind of thing that can pass every unit test and still be broken the moment a real shell invokes it.
+
+**Also found and removed two committed accidents.** `test_pca.png` and `test_volcano.png` had been sitting at the repo root since the very first plotting commit (Aug 9, `v0.2`) — leftover output from manually eyeballing a plot locally, never meant to be tracked. Removed them and added `/test_*.png` and `/bioinsight_output/` (the CLI's default output folder) to `.gitignore` so it doesn't happen again, either by hand or by running the new CLI inside the repo.
+
+**Site refresh.** Version bump aside, regenerated the volcano and PCA demo images on `docs/` by actually running the new `bioinsight` CLI against a fresh synthetic dataset, in-process, and copying its real output PNGs straight onto the site — more honest than the previous approach of calling the plotting functions directly, since it's now the exact same code path a real user's terminal would hit. The old demo happened to land on 207 significant genes; this run landed on 515 out of 4,000 with a different random seed's worth of synthetic effect sizes — both numbers are real, neither is picked to look good, and the hero terminal panel and capabilities grid (now 10 items, laid out 5x2) got updated to match: a CLI card, a GMT-loading card, and the hero code block now leads with the actual `bioinsight ...` command and its real stdout instead of a Python-only example.
+
+Test count: 75 → 82.
+
+---
+
 ## Decisions I looked at and didn't make
 
 Worth writing down what got *rejected*, not just what shipped:
@@ -77,3 +95,4 @@ Worth writing down what got *rejected*, not just what shipped:
 - **Reimplementing edgeR's `filterByExpr`** (which accounts for group sizes and normalized CPM, not just a flat raw-count cutoff) instead of a simple fixed threshold. `filterByExpr` is the more defensible method, but it's also a meaningfully bigger piece of statistical machinery to get right and test. Shipped the simple version now; the module docstring says outright that it isn't `filterByExpr`, so nobody mistakes "good enough to stop testing dead genes" for "the field-standard algorithm."
 - **Duplicating install/usage commands in both the README and this file**, for convenience. Rejected — two copies of the same command drift the moment one changes and nobody updates the other. The README has the one copy that matters for actually running the thing.
 - **A separate repo for the website** (e.g. a dedicated site repo, or the classic `username.github.io` pattern). Rejected in favor of `docs/` inside this repo: one source of truth, and a design/content update to the site can't quietly fall out of sync with the code it's describing.
+- **`click` or `typer` instead of `argparse`** for the CLI. Both are nicer to write. Neither is worth a new dependency for a handful of flags that the standard library already handles fine — `argparse` stays until the CLI's surface area actually outgrows it.
