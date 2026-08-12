@@ -91,6 +91,15 @@ One sign-convention bug worth naming so it doesn't bite again: `compute_log_fold
 
 Smoke-tested `compare_results.py` end to end against fabricated mock CSVs shaped like real DESeq2/edgeR output (never committed, deleted immediately after) to catch parsing and column-name bugs before handing this off — the real run, with real R installed, is next. Whatever those numbers turn out to be, favorable or not, they get written up here as-run.
 
+**The real run.** Results are in `benchmarks/results/` (`comparison_summary.md`, `lfc_vs_deseq2.png`, `lfc_vs_edger.png`). The actual numbers, on the real `airway` dataset, real DESeq2 and real edgeR, both run with their own default settings:
+
+- **Fold change direction and magnitude track well**: Pearson r = 0.938 against DESeq2, 0.947 against edgeR; Spearman ρ = 0.982 / 0.983. The two methods are looking at the same underlying signal and mostly agree on how big it is.
+- **Precision is 1.0 against both.** Every single gene BioInsight calls significant (196 of them, out of 16,139 tested after `min_count=10` filtering), DESeq2 and edgeR also call significant. Zero disagreement in that direction — nothing BioInsight flags turns out to be a false alarm relative to either reference tool.
+- **Recall is low: 0.075 against DESeq2 (2,618 significant), 0.098 against edgeR (1,990 significant).** BioInsight finds under a tenth of what the count-based tools find. This is the real, quantified cost of testing each gene in isolation with a t-test instead of a negative-binomial GLM that borrows statistical power across genes with similar expression levels (via empirical Bayes dispersion shrinkage) — exactly the mechanism `benchmarks/README.md` predicted would cause this gap, before the run happened.
+- **One more thing the scatter plots show that wasn't predicted going in**: for the genes with the largest observed differences (DESeq2/edgeR log2FC of 5-10), BioInsight's estimate systematically undershoots theirs — points bend below the y=x line on the positive side, above it on the negative side. Most likely explanation: `results()` without `lfcShrink()` returns DESeq2's unshrunken MLE, which can produce very large coefficients for genes with near-zero counts in one group (this is precisely why DESeq2's own docs recommend `lfcShrink()` for reporting effect sizes rather than raw `results()` output). BioInsight's `log2(CPM + 1)` transform bounds this by construction — a pseudocount limits how large a ratio involving a near-zero count can get. Not claiming BioInsight is "more correct" here, just noting where and plausibly why the two disagree most.
+
+So: the thing the README said BioInsight hadn't done yet — check it against the field's actual tools instead of describing itself as "not validated" and leaving it there — is done, on one real dataset. The honest one-line summary is precision 1.0, recall ~0.08-0.10 against DESeq2/edgeR defaults: when BioInsight finds something, it's very likely real; it just doesn't find most of what's there. That's a specific, falsifiable claim now, not a vague disclaimer.
+
 ---
 
 ## Decisions I looked at and didn't make

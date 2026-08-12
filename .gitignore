@@ -8,4 +8,4 @@ __pycache__/
 /test_*.png
 /bioinsight_output/
 /benchmarks/data/
-/benchmarks/results/
+/benchmarks/results/*_results.csv

@@ -48,14 +48,14 @@ Every piece of that also works on its own, in case you want to stop and poke at 
 
 Where it stands
 
-It works, on real-shaped toy data, with a test for every rough edge I've found so far (and I keep finding more). What it isn't yet: validated against the field's actual gold-standard tools, so treat its output as a fast first look, not a final answer. It also only understands one kind of data right now — bulk RNA-seq count matrices. Broader ambitions exist; pretending they're already real would just make the README more advanced than the software.
+It works, on real-shaped toy data and on a real public dataset, with a test for every rough edge I've found so far (and I keep finding more). It's also now actually been checked against DESeq2 and edgeR, not just labeled "unvalidated" and left there: on a real RNA-seq dataset, its fold-change estimates track both tools closely, and every gene it calls significant, both of the field-standard tools also call significant — no false alarms. What it doesn't do is find most of what those tools find; a plain per-gene t-test has measurably less statistical power than models built to borrow strength across genes, and now there's a real number attached to that gap instead of a vague disclaimer. The methodology and the honest read of the results are in `benchmarks/`. It also only understands one kind of data right now — bulk RNA-seq count matrices. Broader ambitions exist; pretending they're already real would just make the README more advanced than the software.
 
 Where it's headed
 
 The long-term idea is bigger than RNA-seq: something that can look at a scientific dataset, figure out what kind of analysis actually applies to it, ask for whatever context is missing, run validated methods instead of guessing, and explain the result honestly instead of impressively.
 
-That's a long way off from "upload arbitrary CSV, receive truth," so the near-term plan stays concrete: check the current results against DESeq2 and edgeR on a real public dataset, and only then start adding the more ambitious layers. Barely-expressed genes no longer get tested by default reasoning alone, and pathway enrichment now reads the same .gmt files MSigDB ships — both used to be roadmap items, neither is anymore.
+That's a long way off from "upload arbitrary CSV, receive truth." The concrete near-term items keep clearing: barely-expressed genes no longer get tested by default reasoning alone, pathway enrichment reads the same .gmt files MSigDB ships, and the results are now checked against DESeq2 and edgeR instead of just described as unchecked — all three used to be roadmap items, none of them still are.
 
-Current mission, in short: make the statistical layer harder to fool before teaching it new tricks.
+Current mission, in short: keep finding out exactly where the statistical layer's numbers can and can't be trusted, before teaching it new tricks.
 
 The detailed version — what changed, when, and why — is in `DEVLOG.md`.
