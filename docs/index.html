@@ -28,6 +28,7 @@
           <li><a href="#pipeline">Pipeline</a></li>
           <li><a href="#capabilities">Capabilities</a></li>
           <li><a href="#output">Output</a></li>
+          <li><a href="#benchmark">Benchmark</a></li>
           <li><a href="#why">Why</a></li>
         </ul>
       </nav>
@@ -269,6 +270,45 @@ Results written to bioinsight_output/</span>
             <figcaption>PCA — check whether your samples separate the way your experiment says they should, before you trust anything downstream.</figcaption>
           </figure>
         </div>
+      </div>
+    </section>
+
+    <!-- 6.5. BENCHMARK -->
+    <section id="benchmark" class="section-border-top">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Benchmark</span>
+          <h2>Checked against DESeq2 and edgeR, not just labeled "unvalidated."</h2>
+          <p>Real DESeq2 and real edgeR, both run with their own default settings, on the <code>airway</code> dataset — the same one DESeq2's own vignette uses. Methodology and full write-up in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-value">0.94 / 0.95</span>
+            <span class="stat-label">Pearson r, log fold change (vs. DESeq2 / edgeR)</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">1.0</span>
+            <span class="stat-label">Precision — every gene BioInsight calls significant, both tools also call significant</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">0.08 / 0.10</span>
+            <span class="stat-label">Recall — the real, quantified cost of a per-gene test vs. models that borrow power across genes</span>
+          </div>
+        </div>
+
+        <div class="output-grid">
+          <figure class="figure">
+            <img src="assets/benchmark-deseq2.png" alt="Scatter plot comparing BioInsight's log fold change against DESeq2's on the airway dataset, Pearson r = 0.938." loading="lazy" />
+            <figcaption>BioInsight vs. DESeq2 — 16,139 genes in common, r = 0.938.</figcaption>
+          </figure>
+          <figure class="figure">
+            <img src="assets/benchmark-edger.png" alt="Scatter plot comparing BioInsight's log fold change against edgeR's on the airway dataset, Pearson r = 0.947." loading="lazy" />
+            <figcaption>BioInsight vs. edgeR — 15,890 genes in common, r = 0.947.</figcaption>
+          </figure>
+        </div>
+
+        <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and BioInsight's exploratory method doesn't. It also never flagged a gene neither of them agreed with. Fast first look, not a final answer — same conclusion the README has stated all along, now with a number attached to it.</p>
       </div>
     </section>
 
