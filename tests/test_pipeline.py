@@ -141,3 +141,19 @@ def test_run_analysis_gene_sets_without_background_raises():
             gene_sets={"pathway_A": {"gene1"}},
             generate_plots=False,
         )
+
+
+def test_run_analysis_moderated_method():
+    df = _toy_counts()
+
+    results = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        method="moderated",
+        generate_plots=False,
+    )
+
+    de = results["differential_expression"]
+    assert list(de.index) == list(df.index)
+    assert not de["p_value"].isna().any()

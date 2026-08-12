@@ -4,7 +4,7 @@ BioInsight is a Python pipeline for taking an RNA-seq count matrix from "okay, I
 
 I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so BioInsight is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-Current version: v0.6.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+Current version: v0.7.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
 So what is this, exactly?
 
@@ -42,13 +42,13 @@ BioInsight is the record of learning those lessons in code — one function, one
 
 What it does, roughly
 
-Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions, the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
+Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions (either gene-by-gene, or with a second method that borrows statistical power across genes when a gene's own replicates are too noisy to trust alone), the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
 
 Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between.
 
 Where it stands
 
-It works, on real-shaped toy data and on a real public dataset, with a test for every rough edge I've found so far (and I keep finding more). It's also now actually been checked against DESeq2 and edgeR, not just labeled "unvalidated" and left there: on a real RNA-seq dataset, its fold-change estimates track both tools closely, and every gene it calls significant, both of the field-standard tools also call significant — no false alarms. What it doesn't do is find most of what those tools find; a plain per-gene t-test has measurably less statistical power than models built to borrow strength across genes, and now there's a real number attached to that gap instead of a vague disclaimer. The methodology and the honest read of the results are in `benchmarks/`. It also only understands one kind of data right now — bulk RNA-seq count matrices. Broader ambitions exist; pretending they're already real would just make the README more advanced than the software.
+It works, on real-shaped toy data and on a real public dataset, with a test for every rough edge I've found so far (and I keep finding more). It's also now actually been checked against DESeq2 and edgeR, not just labeled "unvalidated" and left there: on a real RNA-seq dataset, its fold-change estimates track both tools closely, and every gene it calls significant, both of the field-standard tools also call significant — no false alarms, with either testing method. What the default, simplest method doesn't do is find most of what DESeq2 and edgeR find; a plain per-gene t-test has measurably less statistical power than models built to borrow strength across genes. The second, opt-in method exists because of that exact finding — it borrows that same kind of strength across genes, and on the same real dataset it found more than double the significant genes the default method did, while keeping the same zero-false-alarm result. Neither number is the final word; both are in `benchmarks/`, along with the methodology and the honest caveats. It also only understands one kind of data right now — bulk RNA-seq count matrices. Broader ambitions exist; pretending they're already real would just make the README more advanced than the software.
 
 Where it's headed
 
@@ -56,6 +56,6 @@ The long-term idea is bigger than RNA-seq: something that can look at a scientif
 
 That's a long way off from "upload arbitrary CSV, receive truth." The concrete near-term items keep clearing: barely-expressed genes no longer get tested by default reasoning alone, pathway enrichment reads the same .gmt files MSigDB ships, and the results are now checked against DESeq2 and edgeR instead of just described as unchecked — all three used to be roadmap items, none of them still are.
 
-Current mission, in short: keep finding out exactly where the statistical layer's numbers can and can't be trusted, before teaching it new tricks.
+Current mission, in short: keep finding out exactly where the statistical layer's numbers can and can't be trusted, before teaching it new tricks. The moderated testing method is the first real example of that loop actually closing — a measured weakness turned into a specific fix, then checked against the same benchmark that found the weakness in the first place.
 
 The detailed version — what changed, when, and why — is in `DEVLOG.md`.

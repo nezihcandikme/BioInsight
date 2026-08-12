@@ -52,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-samples", type=int, default=2, help="Number of samples that must clear --min-count. Default 2. Ignored without --min-count.")
     parser.add_argument("--alpha", type=float, default=0.05, help="Adjusted p-value cutoff for significance. Default 0.05.")
     parser.add_argument("--lfc-threshold", type=float, default=1.0, help="Absolute log fold change cutoff for significance. Default 1.0.")
+    parser.add_argument(
+        "--method", choices=["welch", "moderated"], default="welch",
+        help="'welch' (default): per-gene t-test, no cross-gene assumptions. "
+             "'moderated': empirical-Bayes variance shrinkage across genes -- more statistical "
+             "power, assumes each gene's two groups share one variance. See benchmarks/ for the tradeoff.",
+    )
     parser.add_argument("--no-plots", action="store_true", help="Skip generating the volcano and PCA plots.")
     parser.add_argument("--explain", action="store_true", help="Generate a plain-language explanation of the results (requires ANTHROPIC_API_KEY).")
     parser.add_argument("--out", default="bioinsight_output", help="Output directory. Default 'bioinsight_output'.")
@@ -87,6 +93,7 @@ def _run(argv: list[str]) -> int:
         min_samples=args.min_samples,
         alpha=args.alpha,
         lfc_threshold=args.lfc_threshold,
+        method=args.method,
         generate_plots=not args.no_plots,
         explain_results=args.explain,
     )

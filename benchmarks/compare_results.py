@@ -15,10 +15,12 @@ result are worth knowing.
 
 Usage (from the repo root, after the R script has run):
     python benchmarks/compare_results.py
+    python benchmarks/compare_results.py --method moderated
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -54,7 +56,7 @@ def load_inputs():
     return counts, meta, deseq2, edger
 
 
-def run_bioinsight(counts: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
+def run_bioinsight(counts: pd.DataFrame, meta: pd.DataFrame, method: str = "welch") -> pd.DataFrame:
     # BioInsight's log_fold_change is mean(group_1) - mean(group_2), so
     # group_1 has to be the treated samples to match DESeq2's
     # contrast=c("dex","trt","untrt") sign convention (positive = higher
@@ -69,16 +71,17 @@ def run_bioinsight(counts: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
         group_2=group_2,
         min_count=10,
         min_samples=4,  # at least one full group's worth of samples
+        method=method,
         generate_plots=False,
     )
     de = results["differential_expression"]
-    print(f"BioInsight: {len(de)} genes tested (post min-count filtering), "
+    print(f"BioInsight ({method}): {len(de)} genes tested (post min-count filtering), "
           f"{int(de['significant'].sum())} significant (adjusted p < 0.05, |log2FC| > 1)")
     return de
 
 
 def compare(bioinsight: pd.DataFrame, other: pd.DataFrame, other_name: str,
-            other_lfc_col: str, other_padj_col: str):
+            other_lfc_col: str, other_padj_col: str, file_suffix: str = ""):
     merged = bioinsight.join(other, how="inner", rsuffix=f"_{other_name}")
     merged = merged.dropna(subset=["log_fold_change", other_lfc_col])
 
@@ -120,27 +123,42 @@ def compare(bioinsight: pd.DataFrame, other: pd.DataFrame, other_name: str,
     ax.set_title(f"BioInsight vs {other_name} (Pearson r = {pearson_r:.3f})")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(RESULTS_DIR / f"lfc_vs_{other_name.lower()}.png", dpi=150)
+    fig.savefig(RESULTS_DIR / f"lfc_vs_{other_name.lower()}{file_suffix}.png", dpi=150)
     plt.close(fig)
 
     return summary
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--method", choices=["welch", "moderated"], default="welch",
+        help="Which BioInsight DE method to benchmark. Default 'welch' -- matches the "
+             "original run and its committed output filenames. 'moderated' writes to "
+             "suffixed filenames (e.g. lfc_vs_deseq2_moderated.png) so it doesn't "
+             "overwrite the welch results.",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    file_suffix = "" if args.method == "welch" else f"_{args.method}"
+
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     counts, meta, deseq2, edger = load_inputs()
-    bioinsight = run_bioinsight(counts, meta)
+    bioinsight = run_bioinsight(counts, meta, method=args.method)
 
-    deseq2_summary = compare(bioinsight, deseq2, "DESeq2", "log2FoldChange", "padj")
-    edger_summary = compare(bioinsight, edger, "edgeR", "logFC", "FDR")
+    deseq2_summary = compare(bioinsight, deseq2, "DESeq2", "log2FoldChange", "padj", file_suffix)
+    edger_summary = compare(bioinsight, edger, "edgeR", "logFC", "FDR", file_suffix)
 
     summary_df = pd.DataFrame([deseq2_summary, edger_summary])
     print()
     print(summary_df.to_string(index=False))
 
-    md_path = RESULTS_DIR / "comparison_summary.md"
+    md_path = RESULTS_DIR / f"comparison_summary{file_suffix}.md"
     with open(md_path, "w") as f:
-        f.write("# BioInsight vs DESeq2 / edgeR — airway dataset\n\n")
+        f.write(f"# BioInsight ({args.method}) vs DESeq2 / edgeR — airway dataset\n\n")
         f.write("Real numbers from a real run. See `benchmarks/README.md` for methodology "
                 "and honest caveats before reading anything into these on their own.\n\n")
         # Plain code block instead of a real markdown table -- avoids pulling
@@ -151,8 +169,8 @@ def main():
         f.write("\n```\n")
 
     print(f"\nWrote {md_path}")
-    print(f"Wrote {RESULTS_DIR / 'lfc_vs_deseq2.png'}")
-    print(f"Wrote {RESULTS_DIR / 'lfc_vs_edger.png'}")
+    print(f"Wrote {RESULTS_DIR / f'lfc_vs_deseq2{file_suffix}.png'}")
+    print(f"Wrote {RESULTS_DIR / f'lfc_vs_edger{file_suffix}.png'}")
 
 
 if __name__ == "__main__":

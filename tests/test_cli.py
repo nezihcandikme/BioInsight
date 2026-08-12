@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from bioinsight.cli import main
 
@@ -88,6 +89,38 @@ def test_cli_missing_sample_exits_nonzero(tmp_path, capsys):
     assert exit_code == 1
     captured = capsys.readouterr()
     assert "does_not_exist" in captured.err
+
+
+def test_cli_moderated_method(tmp_path):
+    out_dir = tmp_path / "out"
+
+    exit_code = main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--method", "moderated",
+        "--no-plots",
+        "--out", str(out_dir),
+    ])
+
+    assert exit_code == 0
+    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    assert list(de.index) == ["gene1", "gene2", "gene3", "gene4"]
+
+
+def test_cli_invalid_method_exits_nonzero(tmp_path):
+    # argparse itself rejects an unknown --method choice via SystemExit,
+    # before main()'s own try/except ever runs.
+    with pytest.raises(SystemExit) as exc_info:
+        main([
+            "tests/fixtures/cli_counts.csv",
+            "--group1", "sample1,sample2",
+            "--group2", "sample3,sample4",
+            "--method", "not-a-real-method",
+            "--out", str(tmp_path / "out"),
+        ])
+
+    assert exc_info.value.code != 0
 
 
 def test_cli_missing_file_exits_nonzero():

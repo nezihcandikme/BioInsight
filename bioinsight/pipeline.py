@@ -34,6 +34,7 @@ def run_analysis(
     min_samples: int = 2,
     alpha: float = 0.05,
     lfc_threshold: float = 1.0,
+    method: str = "welch",
     generate_plots: bool = True,
     explain_results: bool = False,
 ) -> dict:
@@ -78,6 +79,12 @@ def run_analysis(
     lfc_threshold : float, optional
         Log fold change cutoff passed through to ``run_differential_expression``.
         Default 1.0.
+    method : str, optional
+        ``"welch"`` (default, per-gene, no cross-gene assumptions) or
+        ``"moderated"`` (empirical-Bayes variance shrinkage across genes —
+        more statistical power, assumes each gene's two groups share one
+        variance). Passed through to ``run_differential_expression``; see
+        its docstring and ``benchmarks/`` for the measured tradeoff.
     generate_plots : bool, optional
         Whether to generate a volcano plot and a PCA plot. Default True.
     explain_results : bool, optional
@@ -127,7 +134,7 @@ def run_analysis(
     normalized = log2_transform(cpm)
     results["normalized"] = normalized
 
-    de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold)
+    de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold, method=method)
     results["differential_expression"] = de_results
 
     if generate_plots:

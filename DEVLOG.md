@@ -102,6 +102,30 @@ So: the thing the README said BioInsight hadn't done yet — check it against th
 
 ---
 
+## Aug 13 — closing the loop the benchmark opened
+
+Yesterday's benchmark measured a real weakness instead of just gesturing at one: recall of 0.075-0.098 against DESeq2/edgeR, because a per-gene t-test has nothing to fall back on when a gene's own replicates happen to be noisy. Today's the direct response to that specific number.
+
+**Empirical Bayes moderated t-test (v0.7.0).** Added `compute_moderated_pvalues` alongside the existing `compute_pvalues`, selectable via a new `method` parameter (`"welch"`, still the default, or `"moderated"`) threaded through `run_differential_expression`, `run_analysis`, and the CLI's new `--method` flag. The idea — the same one behind limma's `eBayes`/`squeezeVar` (Smyth, 2004) — is to stop trusting each gene's own variance estimate in isolation and instead shrink it toward a value fit from every other gene's variance. A gene with a real effect but one noisy replicate no longer has to fight its own bad luck alone.
+
+Implementation is a method-of-moments fit of the prior (`d0`, `s0²`) using the trigamma function (`scipy.special.polygamma(1, ...)`) on the log of per-gene pooled variances — the same math limma's `fitFDist` is built on, simplified to a direct solve (`scipy.optimize.brentq`) rather than an iterative MLE, and assuming every gene shares the same residual degrees of freedom (true here, since BioInsight's design is always a fixed two-group comparison). Documented plainly as a real, honest tradeoff, not a strictly-better upgrade: the pooled-variance model this needs assumes a gene's two groups share one variance, which is exactly the assumption Welch's t-test was chosen back on Aug 8 to avoid. More power, different assumption — not "the fixed version" of the old one.
+
+A side benefit that fell out of the math rather than being designed in: because the shrinkage prior is never exactly zero, a constant-expression gene no longer needs `compute_pvalues`'s ad hoc zero-variance special case (`p=1` if means match, `p=0` if they don't) — it gets a well-defined, usually-large-but-finite p-value automatically, straight from the same formula every other gene uses.
+
+**Tested the actual power claim, not just that the code runs.** The one test that matters most here (`test_compute_moderated_pvalues_shrinkage_beats_unmoderated_for_noisy_gene`) builds 24 tightly-clustered background genes plus one gene with a real mean difference and one wildly noisy replicate, then asserts the moderated p-value for that noisy gene beats a plain pooled t-test computed on its own variance alone — proving the shrinkage does what it's supposed to, not just that it produces *a* number.
+
+**Reran yesterday's exact benchmark with the new method.** Same real `airway` data, same real DESeq2/edgeR output already on disk — no need to touch R again. Result:
+
+- Significant genes: 196 → 431 (more than double).
+- Recall vs. DESeq2: 0.075 → 0.165. Recall vs. edgeR: 0.098 → 0.217.
+- Precision: still exactly 1.0 against both. More than double the discoveries, zero new false alarms relative to either reference tool.
+
+Fold change correlation barely moved (0.938→0.938 vs. DESeq2, 0.947→0.947 vs. edgeR) — expected, since moderation only changes the variance/significance side of the test, not the mean-difference estimate. `benchmarks/compare_results.py` now takes a `--method` flag and writes suffixed output (`comparison_summary_moderated.md`, `lfc_vs_deseq2_moderated.png`, etc.) so the welch run's committed results stay untouched and both are on record.
+
+Test count: 82 → 93.
+
+---
+
 ## Decisions I looked at and didn't make
 
 Worth writing down what got *rejected*, not just what shipped:
@@ -113,3 +137,4 @@ Worth writing down what got *rejected*, not just what shipped:
 - **Duplicating install/usage commands in both the README and this file**, for convenience. Rejected — two copies of the same command drift the moment one changes and nobody updates the other. The README has the one copy that matters for actually running the thing.
 - **A separate repo for the website** (e.g. a dedicated site repo, or the classic `username.github.io` pattern). Rejected in favor of `docs/` inside this repo: one source of truth, and a design/content update to the site can't quietly fall out of sync with the code it's describing.
 - **`click` or `typer` instead of `argparse`** for the CLI. Both are nicer to write. Neither is worth a new dependency for a handful of flags that the standard library already handles fine — `argparse` stays until the CLI's surface area actually outgrows it.
+- **Making `"moderated"` the new default DE method**, instead of `"welch"`. It found more than double the significant genes on the real benchmark with zero extra false alarms — a tempting case for making it the default. Rejected anyway: it's a different statistical model with a different assumption (shared variance per gene across groups), not a strict upgrade, and switching the default would silently change every existing caller's results out from under them the moment they upgraded. Opt-in via `method="moderated"`, same pattern as `min_count` filtering.
