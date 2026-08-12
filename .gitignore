@@ -7,3 +7,5 @@ __pycache__/
 .env
 /test_*.png
 /bioinsight_output/
+/benchmarks/data/
+/benchmarks/results/
