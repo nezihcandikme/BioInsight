@@ -143,8 +143,12 @@ def main():
         f.write("# BioInsight vs DESeq2 / edgeR — airway dataset\n\n")
         f.write("Real numbers from a real run. See `benchmarks/README.md` for methodology "
                 "and honest caveats before reading anything into these on their own.\n\n")
-        f.write(summary_df.to_markdown(index=False))
-        f.write("\n")
+        # Plain code block instead of a real markdown table -- avoids pulling
+        # in `tabulate` (pandas.to_markdown's dependency) just to format text
+        # that's only ever read as a monospace block anyway.
+        f.write("```\n")
+        f.write(summary_df.to_string(index=False))
+        f.write("\n```\n")
 
     print(f"\nWrote {md_path}")
     print(f"Wrote {RESULTS_DIR / 'lfc_vs_deseq2.png'}")
