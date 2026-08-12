@@ -83,6 +83,8 @@ Tested it two ways: a normal pytest suite (`tests/test_cli.py`, 7 tests — happ
 
 Test count: 75 → 82.
 
+**Simplifying the site.** Went back through `docs/` and cut the one piece of the design that didn't earn its place: a scroll-triggered fade-up animation on every section (an `IntersectionObserver` in `script.js` plus matching CSS). It looked fine, but it's exactly the kind of thing that reads as "trying too hard" on a page whose whole pitch is restraint — content should just be there when you land on it, not perform an entrance. Removed it outright rather than toning it down. Kept the animations that are actually functional (button press feedback, the mobile nav's slide-open) since those communicate something; cut the one that was purely decorative. Also swept up some small things while in there: two pieces of dead CSS nothing referenced, two inline `style=""` attributes moved into real classes, a softer drop shadow on the terminal panel, and a one-line Python-version note next to the install command, since that's a real detail worth having now that the README doesn't carry install specifics anymore.
+
 ---
 
 ## Decisions I looked at and didn't make
