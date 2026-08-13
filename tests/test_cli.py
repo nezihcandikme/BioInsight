@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
@@ -178,6 +180,61 @@ def test_cli_missing_file_exits_nonzero():
         "--group1", "sample1",
         "--group2", "sample2",
     ])
+
+    assert exit_code == 1
+
+
+def test_cli_live_enrichment_organism_writes_output(tmp_path):
+    out_dir = tmp_path / "out"
+    fake_result = pd.DataFrame({"source": ["GO:BP"], "name": ["fake term"], "p_value": [0.01]})
+
+    with patch(
+        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        return_value=fake_result,
+    ) as mock_query:
+        exit_code = main([
+            "tests/fixtures/cli_counts.csv",
+            "--group1", "sample1,sample2",
+            "--group2", "sample3,sample4",
+            "--live-enrichment-organism", "hsapiens",
+            "--no-plots",
+            "--out", str(out_dir),
+        ])
+
+    assert exit_code == 0
+    mock_query.assert_called_once()
+    assert (out_dir / "live_pathway_enrichment.csv").exists()
+
+
+def test_cli_without_live_enrichment_organism_skips_it(tmp_path):
+    out_dir = tmp_path / "out"
+
+    with patch("bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
+        main([
+            "tests/fixtures/cli_counts.csv",
+            "--group1", "sample1,sample2",
+            "--group2", "sample3,sample4",
+            "--no-plots",
+            "--out", str(out_dir),
+        ])
+
+    mock_query.assert_not_called()
+    assert not (out_dir / "live_pathway_enrichment.csv").exists()
+
+
+def test_cli_live_enrichment_network_failure_exits_nonzero(tmp_path):
+    with patch(
+        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        side_effect=ConnectionError("Could not reach g:Profiler"),
+    ):
+        exit_code = main([
+            "tests/fixtures/cli_counts.csv",
+            "--group1", "sample1,sample2",
+            "--group2", "sample3,sample4",
+            "--live-enrichment-organism", "hsapiens",
+            "--no-plots",
+            "--out", str(tmp_path / "out"),
+        ])
 
     assert exit_code == 1
 

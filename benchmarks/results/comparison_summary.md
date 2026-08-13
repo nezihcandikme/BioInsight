@@ -1,4 +1,4 @@
-# BioInsight vs DESeq2 / edgeR — airway dataset
+# BioInsight (welch) vs DESeq2 / edgeR — airway dataset
 
 Real numbers from a real run. See `benchmarks/README.md` for methodology and honest caveats before reading anything into these on their own.
 

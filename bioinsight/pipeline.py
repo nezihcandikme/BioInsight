@@ -39,6 +39,7 @@ def run_analysis(
     gene_annotation: dict[str, str] | str | None = None,
     generate_plots: bool = True,
     explain_results: bool = False,
+    live_enrichment_organism: str | None = None,
 ) -> dict:
     """
     Run the full BioInsight workflow: load/validate, QC, normalize,
@@ -101,6 +102,15 @@ def run_analysis(
         differential expression results using
         ``bioinsight.ai_explanation.methods.explain_de_results``. Requires
         an ``ANTHROPIC_API_KEY`` to be set. Default False.
+    live_enrichment_organism : str, optional
+        If given, also runs pathway enrichment against the live g:Profiler
+        API (``bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment``)
+        on the significant genes, using this as the g:Profiler organism
+        code (e.g. ``"hsapiens"``). This is independent of ``gene_sets``/
+        ``background_genes`` — both can be used together, or either alone.
+        Requires outbound internet access; raises ``ConnectionError`` if
+        g:Profiler can't be reached. Default ``None`` — no live call, no
+        network dependency, existing callers see no change.
 
     Returns
     -------
@@ -115,7 +125,10 @@ def run_analysis(
         - "differential_expression": DE results (log fold change, p-values,
           significance, plus a "gene_symbol" column if gene_annotation was given)
         - "volcano_fig", "pca_fig": matplotlib Figures (if generate_plots=True)
-        - "pathway_enrichment": enrichment results (if gene_sets/background_genes provided)
+        - "pathway_enrichment": local GMT-based enrichment results (if
+          gene_sets/background_genes provided)
+        - "live_pathway_enrichment": g:Profiler enrichment results (if
+          live_enrichment_organism was given)
         - "explanation": AI-generated summary text (if explain_results=True)
     """
     if isinstance(counts, str):
@@ -168,6 +181,18 @@ def run_analysis(
         significant_genes = set(de_results.index[de_results["significant"]])
         results["pathway_enrichment"] = run_pathway_enrichment_analysis(
             significant_genes, gene_sets, background_genes
+        )
+
+    if live_enrichment_organism is not None:
+        # Imported lazily, same reasoning as explain_de_results below: this
+        # is the one function in the package that makes a live network
+        # call, so nothing pays for that possibility unless it's actually
+        # requested.
+        from bioinsight.pathway_analysis.live_enrichment import run_gprofiler_enrichment
+
+        significant_genes = set(de_results.index[de_results["significant"]])
+        results["live_pathway_enrichment"] = run_gprofiler_enrichment(
+            significant_genes, organism=live_enrichment_organism
         )
 
     if explain_results:

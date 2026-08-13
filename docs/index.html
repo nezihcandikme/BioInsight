@@ -51,7 +51,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">RNA-seq analysis pipeline · v0.8.0</span>
+        <span class="eyebrow">RNA-seq analysis pipeline · v0.9.0</span>
         <h1>Turn a count matrix<br />into something you can trust.</h1>
         <p class="lede">
           Validation, quality control, normalization, exploratory differential
@@ -233,7 +233,7 @@ Results written to bioinsight_output/</span>
           </div>
           <div class="capability">
             <h3>Pathway enrichment</h3>
-            <p>Hypergeometric test, always relative to a background you explicitly define.</p>
+            <p>Local hypergeometric test against a background you explicitly define, or an opt-in live query against g:Profiler's curated GO/KEGG/Reactome databases.</p>
           </div>
           <div class="capability">
             <h3>Optional AI summary</h3>
@@ -250,6 +250,10 @@ Results written to bioinsight_output/</span>
           <div class="capability">
             <h3>Gene symbol annotation</h3>
             <p>Attach readable gene names from a local mapping file. No live API call, original IDs untouched.</p>
+          </div>
+          <div class="capability">
+            <h3>GEO data acquisition</h3>
+            <p>Fetch a GEO series' supplementary files and sample metadata straight from a GSE accession.</p>
           </div>
         </div>
       </div>

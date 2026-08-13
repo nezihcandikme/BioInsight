@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
@@ -202,3 +204,38 @@ def test_run_analysis_gene_annotation_as_path(tmp_path):
     de = results["differential_expression"]
     assert de.loc["gene1", "gene_symbol"] == "GENE_ONE"
     assert de.loc["gene2", "gene_symbol"] == "GENE_TWO"
+
+
+def test_run_analysis_without_live_enrichment_organism_skips_it():
+    df = _toy_counts()
+
+    with patch("bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
+        results = run_analysis(
+            df, group_1=["sample1", "sample2"], group_2=["sample3", "sample4"], generate_plots=False,
+        )
+
+    mock_query.assert_not_called()
+    assert "live_pathway_enrichment" not in results
+
+
+def test_run_analysis_live_enrichment_organism_calls_gprofiler_with_significant_genes():
+    df = _toy_counts()
+    fake_result = pd.DataFrame({"source": ["GO:BP"], "name": ["fake term"], "p_value": [0.01]})
+
+    with patch(
+        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        return_value=fake_result,
+    ) as mock_query:
+        results = run_analysis(
+            df,
+            group_1=["sample1", "sample2"],
+            group_2=["sample3", "sample4"],
+            generate_plots=False,
+            live_enrichment_organism="hsapiens",
+        )
+
+    mock_query.assert_called_once()
+    called_genes, called_kwargs = mock_query.call_args
+    assert called_kwargs["organism"] == "hsapiens"
+    assert called_genes[0] <= set(df.index)  # only ever a subset of the tested genes
+    assert results["live_pathway_enrichment"] is fake_result

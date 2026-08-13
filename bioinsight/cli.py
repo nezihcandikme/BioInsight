@@ -63,6 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a two-column gene_id,gene_symbol CSV. If given, adds a gene_symbol "
              "column to differential_expression.csv (NaN for genes not in the file).",
     )
+    parser.add_argument(
+        "--live-enrichment-organism",
+        help="g:Profiler organism code (e.g. 'hsapiens'). If given, also runs pathway "
+             "enrichment against the live g:Profiler API and writes live_pathway_enrichment.csv. "
+             "Independent of --gmt/--background. Requires outbound internet access.",
+    )
     parser.add_argument("--no-plots", action="store_true", help="Skip generating the volcano and PCA plots.")
     parser.add_argument("--explain", action="store_true", help="Generate a plain-language explanation of the results (requires ANTHROPIC_API_KEY).")
     parser.add_argument("--out", default="bioinsight_output", help="Output directory. Default 'bioinsight_output'.")
@@ -102,6 +108,7 @@ def _run(argv: list[str]) -> int:
         gene_annotation=args.annotation,
         generate_plots=not args.no_plots,
         explain_results=args.explain,
+        live_enrichment_organism=args.live_enrichment_organism,
     )
 
     out_dir = Path(args.out)
@@ -113,6 +120,9 @@ def _run(argv: list[str]) -> int:
 
     if "pathway_enrichment" in results:
         results["pathway_enrichment"].to_csv(out_dir / "pathway_enrichment.csv", index=False)
+
+    if "live_pathway_enrichment" in results:
+        results["live_pathway_enrichment"].to_csv(out_dir / "live_pathway_enrichment.csv", index=False)
 
     if "volcano_fig" in results:
         results["volcano_fig"].savefig(out_dir / "volcano.png", dpi=150, bbox_inches="tight")
@@ -134,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
     try:
         return _run(argv)
-    except (CountMatrixError, ValueError, FileNotFoundError) as exc:
+    except (CountMatrixError, ValueError, FileNotFoundError, ConnectionError, RuntimeError) as exc:
         print(f"bioinsight: {exc}", file=sys.stderr)
         return 1
 

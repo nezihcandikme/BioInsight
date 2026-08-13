@@ -4,7 +4,7 @@ OmicForge is a Python pipeline for taking an RNA-seq count matrix from "okay, I 
 
 I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so OmicForge is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-Current version: v0.8.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+Current version: v0.9.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
 So what is this, exactly?
 
@@ -44,7 +44,7 @@ What it does, roughly
 
 Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions (either gene-by-gene, or with a second method that borrows statistical power across genes when a gene's own replicates are too noisy to trust alone), the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
 
-Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between. Results can also come back with actual gene names attached instead of just the accession IDs they were tested under, if you hand it a mapping — nothing fetched over the network, just a local file you already have.
+Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between. Results can also come back with actual gene names attached instead of just the accession IDs they were tested under, if you hand it a mapping — nothing fetched over the network, just a local file you already have. Pathway enrichment now has a second, opt-in source too: alongside the original local GMT-file lookup, it can query g:Profiler's live, curated databases directly, if you're running somewhere with real internet access. And if the data you want to analyze lives in a GEO series rather than on your disk already, there's now a small set of helpers that fetch a series' supplementary files and sample metadata straight from NCBI, so getting from a GSE accession to a usable count matrix doesn't mean hand-building the FTP URL yourself.
 
 Where it stands
 

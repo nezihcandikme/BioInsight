@@ -1,21 +1,27 @@
 """
 Compare BioInsight's differential expression output against DESeq2 and
-edgeR on the same input (the `airway` dataset).
+edgeR on the same input.
 
-Run `Rscript benchmarks/run_deseq2_edger.R` first -- this script reads
-what that produces (benchmarks/data/airway_counts.csv,
-benchmarks/data/airway_metadata.csv, benchmarks/results/deseq2_results.csv,
-benchmarks/results/edger_results.csv) and runs BioInsight on the identical
-count matrix and groups, then reports where the three agree and disagree.
+Supports two datasets (see DATASETS below): `airway` (human, the original
+benchmark) and `pasilla` (fly, added later specifically to check whether
+the pattern found on `airway` -- precision 1.0, recall ~0.08-0.10 against
+each tool's own defaults -- is a property of the method or just a property
+of that one dataset). Run the matching R script first
+(`run_deseq2_edger.R` or `run_deseq2_edger_pasilla.R`) -- this script reads
+what that produces (benchmarks/data/<dataset>_counts.csv,
+benchmarks/data/<dataset>_metadata.csv, and each tool's results CSV) and
+runs BioInsight on the identical count matrix and groups, then reports
+where the three agree and disagree.
 
 This is not trying to make BioInsight look good -- it's trying to find out
 where a simple Welch's-t-test-on-log2-CPM approach actually diverges from
 count-based negative-binomial modeling, and by how much. Both kinds of
 result are worth knowing.
 
-Usage (from the repo root, after the R script has run):
+Usage (from the repo root, after the matching R script has run):
     python benchmarks/compare_results.py
-    python benchmarks/compare_results.py --method moderated
+    python benchmarks/compare_results.py --dataset pasilla
+    python benchmarks/compare_results.py --dataset pasilla --method moderated
 """
 
 from __future__ import annotations
@@ -36,6 +42,28 @@ from bioinsight.pipeline import run_analysis
 DATA_DIR = Path(__file__).resolve().parent / "data"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
+# Per-dataset config. `result_prefix` controls output filenames -- "airway"
+# keeps the original, unprefixed names (deseq2_results.csv,
+# lfc_vs_deseq2.png, ...) so the files already committed from the first
+# benchmark run stay untouched; any dataset added after it gets its name
+# prefixed instead, to avoid the two runs' outputs colliding.
+DATASETS = {
+    "airway": {
+        "r_script": "run_deseq2_edger.R",
+        "group_col": "dex",
+        "group_1_value": "trt",
+        "group_2_value": "untrt",
+        "result_prefix": "",
+    },
+    "pasilla": {
+        "r_script": "run_deseq2_edger_pasilla.R",
+        "group_col": "condition",
+        "group_1_value": "treated",
+        "group_2_value": "untreated",
+        "result_prefix": "pasilla_",
+    },
+}
+
 
 def _require(path: Path, hint: str) -> Path:
     if not path.exists():
@@ -43,11 +71,13 @@ def _require(path: Path, hint: str) -> Path:
     return path
 
 
-def load_inputs():
-    counts_path = _require(DATA_DIR / "airway_counts.csv", "Run `Rscript benchmarks/run_deseq2_edger.R` first.")
-    meta_path = _require(DATA_DIR / "airway_metadata.csv", "Run `Rscript benchmarks/run_deseq2_edger.R` first.")
-    deseq2_path = _require(RESULTS_DIR / "deseq2_results.csv", "Run `Rscript benchmarks/run_deseq2_edger.R` first.")
-    edger_path = _require(RESULTS_DIR / "edger_results.csv", "Run `Rscript benchmarks/run_deseq2_edger.R` first.")
+def load_inputs(dataset: str):
+    cfg = DATASETS[dataset]
+    hint = f"Run `Rscript benchmarks/{cfg['r_script']}` first."
+    counts_path = _require(DATA_DIR / f"{dataset}_counts.csv", hint)
+    meta_path = _require(DATA_DIR / f"{dataset}_metadata.csv", hint)
+    deseq2_path = _require(RESULTS_DIR / f"{cfg['result_prefix']}deseq2_results.csv", hint)
+    edger_path = _require(RESULTS_DIR / f"{cfg['result_prefix']}edger_results.csv", hint)
 
     counts = pd.read_csv(counts_path, index_col=0)
     meta = pd.read_csv(meta_path)
@@ -56,14 +86,15 @@ def load_inputs():
     return counts, meta, deseq2, edger
 
 
-def run_bioinsight(counts: pd.DataFrame, meta: pd.DataFrame, method: str = "welch") -> pd.DataFrame:
+def run_bioinsight(counts: pd.DataFrame, meta: pd.DataFrame, dataset: str, method: str = "welch") -> pd.DataFrame:
+    cfg = DATASETS[dataset]
     # BioInsight's log_fold_change is mean(group_1) - mean(group_2), so
-    # group_1 has to be the treated samples to match DESeq2's
-    # contrast=c("dex","trt","untrt") sign convention (positive = higher
-    # in treatment). Get this backwards and every correlation below comes
-    # out negative for no statistical reason at all.
-    group_1 = meta.loc[meta["dex"] == "trt", "sample"].tolist()
-    group_2 = meta.loc[meta["dex"] == "untrt", "sample"].tolist()
+    # group_1 has to be the treated samples to match each tool's own
+    # "treated vs untreated"-direction contrast. Get this backwards and
+    # every correlation below comes out negative for no statistical reason
+    # at all.
+    group_1 = meta.loc[meta[cfg["group_col"]] == cfg["group_1_value"], "sample"].tolist()
+    group_2 = meta.loc[meta[cfg["group_col"]] == cfg["group_2_value"], "sample"].tolist()
 
     results = run_analysis(
         counts,
@@ -132,6 +163,13 @@ def compare(bioinsight: pd.DataFrame, other: pd.DataFrame, other_name: str,
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--dataset", choices=sorted(DATASETS), default="airway",
+        help="Which benchmark dataset to compare on. Default 'airway' -- matches the "
+             "original run and its committed, unprefixed output filenames. Other "
+             "datasets write to suffixed filenames (e.g. lfc_vs_deseq2_pasilla.png) "
+             "so they don't collide with the airway run's committed results.",
+    )
+    parser.add_argument(
         "--method", choices=["welch", "moderated"], default="welch",
         help="Which BioInsight DE method to benchmark. Default 'welch' -- matches the "
              "original run and its committed output filenames. 'moderated' writes to "
@@ -143,11 +181,13 @@ def parse_args():
 
 def main():
     args = parse_args()
-    file_suffix = "" if args.method == "welch" else f"_{args.method}"
+    dataset_suffix = "" if args.dataset == "airway" else f"_{args.dataset}"
+    method_suffix = "" if args.method == "welch" else f"_{args.method}"
+    file_suffix = dataset_suffix + method_suffix
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    counts, meta, deseq2, edger = load_inputs()
-    bioinsight = run_bioinsight(counts, meta, method=args.method)
+    counts, meta, deseq2, edger = load_inputs(args.dataset)
+    bioinsight = run_bioinsight(counts, meta, args.dataset, method=args.method)
 
     deseq2_summary = compare(bioinsight, deseq2, "DESeq2", "log2FoldChange", "padj", file_suffix)
     edger_summary = compare(bioinsight, edger, "edgeR", "logFC", "FDR", file_suffix)
@@ -158,7 +198,7 @@ def main():
 
     md_path = RESULTS_DIR / f"comparison_summary{file_suffix}.md"
     with open(md_path, "w") as f:
-        f.write(f"# BioInsight ({args.method}) vs DESeq2 / edgeR — airway dataset\n\n")
+        f.write(f"# BioInsight ({args.method}) vs DESeq2 / edgeR — {args.dataset} dataset\n\n")
         f.write("Real numbers from a real run. See `benchmarks/README.md` for methodology "
                 "and honest caveats before reading anything into these on their own.\n\n")
         # Plain code block instead of a real markdown table -- avoids pulling
