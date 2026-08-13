@@ -318,7 +318,7 @@ Results written to bioinsight_output/</span>
 
         <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and OmicForge's default exploratory method doesn't. It also never flagged a gene neither of them agreed with. Fast first look, not a final answer — same conclusion the README has stated all along, now with a number attached to it.</p>
         <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). OmicForge also has an opt-in empirical-Bayes moderated t-test that does borrow across genes — on this same real dataset, it found more than double the significant genes (196 → 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade; both numbers are real and both are in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
-        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code> — <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't: precision stayed 1.0, and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). Full numbers in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code> — <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't: with the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too — precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
       </div>
     </section>
 
@@ -328,7 +328,7 @@ Results written to bioinsight_output/</span>
         <div class="why-inner">
           <span class="eyebrow">Why this exists</span>
           <h2 class="why-heading">
-            Built by a high-school student learning how easy it is to be confidently wrong.
+            Built by Nezih Can Dikme, a high-school student learning how easy it is to be confidently wrong.
           </h2>
           <p>
             Before OmicForge, RNA-seq made sense in the dangerously comfortable
@@ -346,12 +346,12 @@ Results written to bioinsight_output/</span>
           </p>
 
           <blockquote class="pull-quote">
-            "Turns out there are approximately seventeen ways to produce
-            convincing nonsense before breakfast."
+            "It turns out there are more ways to produce convincing-looking
+            nonsense from a count matrix than most explanations let on."
           </blockquote>
 
           <p>
-            So OmicForge is currently focused on making those seventeen ways
+            So OmicForge is currently focused on making those failure modes
             loud, testable, and difficult to ignore — one function, one broken
             test, and one increasingly specific error message at a time.
           </p>
@@ -396,7 +396,7 @@ Results written to bioinsight_output/</span>
           <li><a href="https://github.com/nezihcandikme/BioInsight/blob/main/DEVLOG.md" target="_blank" rel="noopener">Devlog</a></li>
         </ul>
       </div>
-      <p class="footer-note">&copy; <span id="year">2026</span> OmicForge. An educational project — not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>
+      <p class="footer-note">&copy; <span id="year">2026</span> Nezih Can Dikme. OmicForge is an educational project — not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>
     </div>
   </footer>
 
