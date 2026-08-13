@@ -1,14 +1,14 @@
-BioInsight
+OmicForge
 
-BioInsight is a Python pipeline for taking an RNA-seq count matrix from "okay, I have a CSV" to actual exploratory results: validation, sample quality control, normalization, differential expression, plots, and pathway enrichment — with an optional layer that asks an LLM to explain the output in plain language.
+OmicForge is a Python pipeline for taking an RNA-seq count matrix from "okay, I have a CSV" to actual exploratory results: validation, sample quality control, normalization, differential expression, plots, and pathway enrichment — with an optional layer that asks an LLM to explain the output in plain language.
 
-I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so BioInsight is currently focused on making those mistakes loud, testable, and difficult to ignore.
+I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so OmicForge is currently focused on making those mistakes loud, testable, and difficult to ignore.
 
-Current version: v0.7.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+Current version: v0.8.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
 
 So what is this, exactly?
 
-BioInsight started with one extremely glamorous problem: validating a CSV.
+OmicForge started with one extremely glamorous problem: validating a CSV.
 
 Then the CSV raised questions.
 
@@ -34,17 +34,17 @@ Why I'm building it
 
 I'm a high-school student learning programming, statistics, and computational biology by building things that are slightly beyond what I currently know how to build.
 
-Before BioInsight, I understood RNA-seq in the dangerously comfortable summary-version: count reads per gene, compare two conditions, find changed genes. That explanation is technically related to reality, but it skips nearly everything capable of ruining an analysis.
+Before OmicForge, I understood RNA-seq in the dangerously comfortable summary-version: count reads per gene, compare two conditions, find changed genes. That explanation is technically related to reality, but it skips nearly everything capable of ruining an analysis.
 
 Building the pipeline forced me to confront those missing layers directly: what makes a count matrix valid, why library size matters, why normalization is not one universal operation, why a difference of means only becomes a fold change on the right scale, why thousands of simultaneous tests require correction, and why statistical significance is not the same thing as biological importance.
 
-BioInsight is the record of learning those lessons in code — one function, one broken test, and one increasingly specific error message at a time. The full decision-by-decision version of that record lives in `DEVLOG.md`.
+OmicForge is the record of learning those lessons in code — one function, one broken test, and one increasingly specific error message at a time. The full decision-by-decision version of that record lives in `DEVLOG.md`.
 
 What it does, roughly
 
 Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions (either gene-by-gene, or with a second method that borrows statistical power across genes when a gene's own replicates are too noisy to trust alone), the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
 
-Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between.
+Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between. Results can also come back with actual gene names attached instead of just the accession IDs they were tested under, if you hand it a mapping — nothing fetched over the network, just a local file you already have.
 
 Where it stands
 

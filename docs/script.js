@@ -1,4 +1,4 @@
-// BioInsight site — minimal vanilla JS. No dependencies, no build step.
+// OmicForge site — minimal vanilla JS. No dependencies, no build step.
 
 document.addEventListener("DOMContentLoaded", function () {
   // Mobile nav toggle

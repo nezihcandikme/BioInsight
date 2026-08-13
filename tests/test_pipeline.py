@@ -157,3 +157,48 @@ def test_run_analysis_moderated_method():
     de = results["differential_expression"]
     assert list(de.index) == list(df.index)
     assert not de["p_value"].isna().any()
+
+
+def test_run_analysis_without_gene_annotation_has_no_symbol_column():
+    df = _toy_counts()
+
+    results = run_analysis(
+        df, group_1=["sample1", "sample2"], group_2=["sample3", "sample4"], generate_plots=False,
+    )
+
+    assert "gene_symbol" not in results["differential_expression"].columns
+
+
+def test_run_analysis_gene_annotation_as_dict():
+    df = _toy_counts()
+
+    results = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        gene_annotation={"gene1": "GENE_ONE", "gene3": "GENE_THREE"},
+        generate_plots=False,
+    )
+
+    de = results["differential_expression"]
+    assert de.loc["gene1", "gene_symbol"] == "GENE_ONE"
+    assert de.loc["gene3", "gene_symbol"] == "GENE_THREE"
+    assert pd.isna(de.loc["gene2", "gene_symbol"])
+
+
+def test_run_analysis_gene_annotation_as_path(tmp_path):
+    df = _toy_counts()
+    annotation_path = tmp_path / "annotation.csv"
+    annotation_path.write_text("gene_id,gene_symbol\ngene1,GENE_ONE\ngene2,GENE_TWO\n")
+
+    results = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        gene_annotation=str(annotation_path),
+        generate_plots=False,
+    )
+
+    de = results["differential_expression"]
+    assert de.loc["gene1", "gene_symbol"] == "GENE_ONE"
+    assert de.loc["gene2", "gene_symbol"] == "GENE_TWO"

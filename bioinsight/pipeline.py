@@ -22,6 +22,7 @@ from bioinsight.normalization.methods import compute_cpm, log2_transform
 from bioinsight.differential_expression.methods import run_differential_expression
 from bioinsight.visualization.plots import plot_volcano, plot_pca
 from bioinsight.pathway_analysis.methods import run_pathway_enrichment_analysis
+from bioinsight.annotation.methods import annotate_de_results, load_gene_annotation
 
 
 def run_analysis(
@@ -35,6 +36,7 @@ def run_analysis(
     alpha: float = 0.05,
     lfc_threshold: float = 1.0,
     method: str = "welch",
+    gene_annotation: dict[str, str] | str | None = None,
     generate_plots: bool = True,
     explain_results: bool = False,
 ) -> dict:
@@ -85,6 +87,13 @@ def run_analysis(
         more statistical power, assumes each gene's two groups share one
         variance). Passed through to ``run_differential_expression``; see
         its docstring and ``benchmarks/`` for the measured tradeoff.
+    gene_annotation : dict[str, str] or str, optional
+        Either a pre-loaded gene ID -> gene symbol dict, or a path to a
+        two-column CSV to load one from (see
+        ``bioinsight.annotation.methods.load_gene_annotation``). If given,
+        the differential expression results gain a ``gene_symbol`` column
+        (``NaN`` for any gene not in the mapping). Default ``None`` — no
+        annotation, no new column, existing callers see no change.
     generate_plots : bool, optional
         Whether to generate a volcano plot and a PCA plot. Default True.
     explain_results : bool, optional
@@ -103,7 +112,8 @@ def run_analysis(
           ``min_count`` is set)
         - "normalized": CPM-normalized, log2-transformed expression matrix
           (computed from filtered counts if filtering was applied)
-        - "differential_expression": DE results (log fold change, p-values, significance)
+        - "differential_expression": DE results (log fold change, p-values,
+          significance, plus a "gene_symbol" column if gene_annotation was given)
         - "volcano_fig", "pca_fig": matplotlib Figures (if generate_plots=True)
         - "pathway_enrichment": enrichment results (if gene_sets/background_genes provided)
         - "explanation": AI-generated summary text (if explain_results=True)
@@ -136,6 +146,10 @@ def run_analysis(
 
     de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold, method=method)
     results["differential_expression"] = de_results
+
+    if gene_annotation is not None:
+        annotation = load_gene_annotation(gene_annotation) if isinstance(gene_annotation, str) else gene_annotation
+        results["differential_expression"] = annotate_de_results(de_results, annotation)
 
     if generate_plots:
         involved_samples = group_1 + group_2

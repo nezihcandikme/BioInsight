@@ -1,6 +1,6 @@
-# Benchmarking BioInsight against DESeq2 and edgeR
+# Benchmarking OmicForge against DESeq2 and edgeR
 
-BioInsight's own README has said this from the start: its differential
+OmicForge's own README has said this from the start: its differential
 expression step is a simple, exploratory mean-difference t-test on
 normalized log2 CPM values, not count-based negative-binomial modeling
 like DESeq2 or edgeR. That's a design choice, not an oversight — but a
@@ -15,7 +15,7 @@ against the tools it's naming. This directory is that check.
 8 human airway smooth muscle RNA-seq samples, 4 cell lines, each with an
 untreated and a dexamethasone-treated sample. It's the dataset DESeq2's
 own vignette uses as its worked example — a standard, well-understood
-choice, not one picked because it happens to flatter BioInsight.
+choice, not one picked because it happens to flatter OmicForge.
 
 ## Running it
 
@@ -33,22 +33,22 @@ The R script writes the raw count matrix and sample metadata to
 `benchmarks/data/`, runs DESeq2 and edgeR with each package's own
 standard workflow (default settings, `filterByExpr` for edgeR, no
 tuning toward any particular outcome), and writes their results to
-`benchmarks/results/`. The Python script then runs BioInsight
+`benchmarks/results/`. The Python script then runs OmicForge
 (`run_analysis`, `min_count=10, min_samples=4`) on the exact same
 count matrix and the exact same two groups, and reports:
 
 - Pearson and Spearman correlation of log fold change, per gene, against
   each tool
-- overlap of "significant" gene calls (BioInsight's default
+- overlap of "significant" gene calls (OmicForge's default
   `adjusted_p_value < 0.05` and `|log_fold_change| > 1` vs. each tool's
   `padj`/`FDR < 0.05`) as a Jaccard index, precision, and recall
-- a scatter plot of BioInsight's log fold change against each tool's,
+- a scatter plot of OmicForge's log fold change against each tool's,
   saved as `benchmarks/results/lfc_vs_deseq2.png` and
   `lfc_vs_edger.png`
 
-`--method` selects which of BioInsight's two DE methods to benchmark:
+`--method` selects which of OmicForge's two DE methods to benchmark:
 `welch` (default, matches the original run and its unsuffixed output
-filenames) or `moderated` (BioInsight's empirical-Bayes variance-shrinkage
+filenames) or `moderated` (OmicForge's empirical-Bayes variance-shrinkage
 option, writes to `*_moderated.png`/`.md` so it doesn't overwrite the
 welch results). Both are worth running — they're testing different
 statistical assumptions, not an old version and a new one.
@@ -76,7 +76,7 @@ all for the lowest-count genes, which is exactly where shrinkage does
 the most work.
 
 **Significance-call overlap is the harder, more informative number, and
-it isn't expected to be 1.0.** BioInsight tests per-gene variance with a
+it isn't expected to be 1.0.** OmicForge tests per-gene variance with a
 t-test on normalized values; DESeq2 and edgeR model the mean-variance
 relationship across *all* genes at once and borrow statistical strength
 across genes with similar expression levels. That's a real, substantive
@@ -86,12 +86,12 @@ and not to a tool that's borrowed information from thousands of other
 genes to get a better dispersion estimate. Disagreement here is data,
 not failure.
 
-**This doesn't "validate" BioInsight and isn't meant to.** It measures
+**This doesn't "validate" OmicForge and isn't meant to.** It measures
 the actual size of the gap between a simple exploratory method and the
 field's standard tools, on one real dataset. If the gap turns out to be
 small for genes with clear, large effects and large for marginal ones,
 that's a specific, useful, falsifiable claim to make about when
-BioInsight's numbers are trustworthy — a much stronger statement than
+OmicForge's numbers are trustworthy — a much stronger statement than
 "it works on toy data," which is all that could honestly be said before
 this existed.
 

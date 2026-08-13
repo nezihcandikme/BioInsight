@@ -123,6 +123,55 @@ def test_cli_invalid_method_exits_nonzero(tmp_path):
     assert exc_info.value.code != 0
 
 
+def test_cli_annotation_adds_gene_symbol_column(tmp_path):
+    out_dir = tmp_path / "out"
+
+    exit_code = main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--annotation", "tests/fixtures/cli_gene_annotation.csv",
+        "--no-plots",
+        "--out", str(out_dir),
+    ])
+
+    assert exit_code == 0
+    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    assert de.loc["gene1", "gene_symbol"] == "GENE_ONE"
+    assert de.loc["gene2", "gene_symbol"] == "GENE_TWO"
+    assert pd.isna(de.loc["gene3", "gene_symbol"])
+
+
+def test_cli_without_annotation_has_no_symbol_column(tmp_path):
+    out_dir = tmp_path / "out"
+
+    main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--no-plots",
+        "--out", str(out_dir),
+    ])
+
+    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    assert "gene_symbol" not in de.columns
+
+
+def test_cli_bad_annotation_file_exits_nonzero(tmp_path):
+    bad_annotation = tmp_path / "bad_annotation.csv"
+    bad_annotation.write_text("gene_id,gene_symbol\ngene1,GENE_ONE\ngene1,DIFFERENT\n")
+
+    exit_code = main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--annotation", str(bad_annotation),
+        "--out", str(tmp_path / "out"),
+    ])
+
+    assert exit_code == 1
+
+
 def test_cli_missing_file_exits_nonzero():
     exit_code = main([
         "tests/fixtures/does_not_exist.csv",

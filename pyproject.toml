@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioinsight"
-version = "0.7.0"
-description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression (Welch's or empirical-Bayes-moderated), visualization, and pathway enrichment (with GMT/MSigDB gene-set loading), runnable as a library or a CLI."
+version = "0.8.0"
+description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression (Welch's or empirical-Bayes-moderated), gene ID/symbol annotation, visualization, and pathway enrichment (with GMT/MSigDB gene-set loading), runnable as a library or a CLI."
 requires-python = ">=3.9"
 dependencies = [
     "pandas",

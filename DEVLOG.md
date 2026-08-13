@@ -1,6 +1,8 @@
-# BioInsight — Devlog
+# OmicForge — Devlog
 
-The README tells you what BioInsight is. This tells you why it looks the way it does — the actual decisions, the bugs that forced them, and the things I considered and didn't do. Git commit messages say *what* changed. This is for the *why*, in more than one line.
+The README tells you what OmicForge is. This tells you why it looks the way it does — the actual decisions, the bugs that forced them, and the things I considered and didn't do. Git commit messages say *what* changed. This is for the *why*, in more than one line.
+
+*(This project was called BioInsight through Aug 13; entries below written before the rename refer to it by that name, unchanged, since that was its actual name at the time.)*
 
 Organized by day, not by session — a day can have several working sessions in it, but the entry below is one consolidated record of what changed and why, not a session-by-session transcript. Early entries are shorter because they're reconstructed from the commits and the code itself — I didn't start keeping a real devlog until Aug 11, so I'm not going to pretend I remember internal debates from Aug 6 that I didn't write down.
 
@@ -124,6 +126,16 @@ Fold change correlation barely moved (0.938→0.938 vs. DESeq2, 0.947→0.947 vs
 
 Test count: 82 → 93.
 
+**Gene ID → symbol annotation (v0.8.0).** Real motivation, not a hypothetical one: the actual `airway` benchmark output is indexed by Ensembl IDs (`ENSG00000141510` and so on) — correct, but nobody reads a results table like that comfortably. Added `bioinsight/annotation/` (`load_gene_annotation`, `annotate_de_results`), following the exact precedent `pathway_analysis/gmt.py` set: no live Ensembl/BioMart/API call, just a local two-column CSV (`gene_id,gene_symbol`) you already have or exported once. Wired into `run_analysis` (`gene_annotation`, accepting either a path or an already-loaded dict, same path-or-object pattern `counts` already uses) and the CLI (`--annotation`).
+
+The one real design call: unmapped genes get `gene_symbol = NaN`, not a fallback to the gene ID. Falling back was tempting — never an empty-looking cell — but it would make "genuinely unmapped" indistinguishable from "the symbol happens to equal the ID," which is a worse failure mode than an honest blank. The original ID stays exactly where it always was, as the index; the symbol is purely additive.
+
+Validation follows the same loud-by-default pattern as the rest of the input-loading code: missing columns, a header with zero data rows, a row missing either value, and — the one most worth catching — the same gene ID mapping to two *different* symbols in different rows, which raises naming the ID rather than silently keeping whichever row happened to load last.
+
+Test count: 93 → 114.
+
+**Renamed the project to OmicForge.** "BioInsight" turned out to already be in use by other bioinformatics/biomedical software, and the plan is for this to eventually grow past bulk RNA-seq into a broader computational omics toolkit — a name that's already scoped to one thing would fight that. This was a visible-text-only rename: README, this file's masthead, and the `docs/` site's title, copy, and branding all now say OmicForge. The Python package, its imports, `pyproject.toml`'s package name, and the installed CLI command are all still `bioinsight` — none of that changed, and changing it wasn't the point of this pass. The GitHub repo is also still `github.com/nezihcandikme/BioInsight`, since it hasn't actually been renamed there; every link in the README and the site still points at the real URL. Scope stays bulk RNA-seq for now — the new name is about where this can go, not a signal to go there yet.
+
 ---
 
 ## Decisions I looked at and didn't make
@@ -138,3 +150,5 @@ Worth writing down what got *rejected*, not just what shipped:
 - **A separate repo for the website** (e.g. a dedicated site repo, or the classic `username.github.io` pattern). Rejected in favor of `docs/` inside this repo: one source of truth, and a design/content update to the site can't quietly fall out of sync with the code it's describing.
 - **`click` or `typer` instead of `argparse`** for the CLI. Both are nicer to write. Neither is worth a new dependency for a handful of flags that the standard library already handles fine — `argparse` stays until the CLI's surface area actually outgrows it.
 - **Making `"moderated"` the new default DE method**, instead of `"welch"`. It found more than double the significant genes on the real benchmark with zero extra false alarms — a tempting case for making it the default. Rejected anyway: it's a different statistical model with a different assumption (shared variance per gene across groups), not a strict upgrade, and switching the default would silently change every existing caller's results out from under them the moment they upgraded. Opt-in via `method="moderated"`, same pattern as `min_count` filtering.
+- **Falling back to the gene ID when a symbol is unmapped**, instead of `NaN`, so annotated tables never show a "blank" cell. Rejected — it would make an actually-unmapped gene look identical to a gene whose real symbol happens to equal its ID, which is strictly worse than an honest missing value. `NaN` is also just easier to filter on (`df["gene_symbol"].isna()`) than a column mixing real symbols with IDs pretending to be symbols.
+- **Fetching annotation live from Ensembl/BioMart/MyGene.info** instead of a local file. Would be more convenient when it works, but adds a network dependency this project has otherwise deliberately avoided (the only other outbound call is the opt-in AI explanation layer), and the sandbox this gets built in can't reach any of those hosts anyway — same reasoning that shaped the GMT loader.

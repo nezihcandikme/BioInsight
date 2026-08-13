@@ -58,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
              "'moderated': empirical-Bayes variance shrinkage across genes -- more statistical "
              "power, assumes each gene's two groups share one variance. See benchmarks/ for the tradeoff.",
     )
+    parser.add_argument(
+        "--annotation",
+        help="Path to a two-column gene_id,gene_symbol CSV. If given, adds a gene_symbol "
+             "column to differential_expression.csv (NaN for genes not in the file).",
+    )
     parser.add_argument("--no-plots", action="store_true", help="Skip generating the volcano and PCA plots.")
     parser.add_argument("--explain", action="store_true", help="Generate a plain-language explanation of the results (requires ANTHROPIC_API_KEY).")
     parser.add_argument("--out", default="bioinsight_output", help="Output directory. Default 'bioinsight_output'.")
@@ -94,6 +99,7 @@ def _run(argv: list[str]) -> int:
         alpha=args.alpha,
         lfc_threshold=args.lfc_threshold,
         method=args.method,
+        gene_annotation=args.annotation,
         generate_plots=not args.no_plots,
         explain_results=args.explain,
     )

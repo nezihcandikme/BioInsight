@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BioInsight — site styles
+   OmicForge — site styles
    Plain CSS, no build step. Palette: black / white / gray + one accent.
    ========================================================================== */
 
@@ -521,7 +521,7 @@ section {
 
 .capabilities-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1px;
   background: var(--border-soft);
   border: 1px solid var(--border-soft);
