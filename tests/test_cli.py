@@ -62,6 +62,20 @@ def test_cli_with_gmt_writes_pathway_enrichment(tmp_path):
     assert (out_dir / "pathway_enrichment.csv").exists()
 
 
+def test_cli_with_gmt_writes_pathway_enrichment_plot(tmp_path):
+    out_dir = tmp_path / "out"
+
+    main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--gmt", "tests/fixtures/sample_gene_sets.gmt",
+        "--out", str(out_dir),
+    ])
+
+    assert (out_dir / "pathway_enrichment.png").exists()
+
+
 def test_cli_min_count_filters_low_count_genes(tmp_path):
     out_dir = tmp_path / "out"
 

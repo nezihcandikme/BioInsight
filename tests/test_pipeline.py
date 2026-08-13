@@ -57,6 +57,26 @@ def test_run_analysis_with_pathway_enrichment():
     assert "volcano_fig" not in results
 
 
+def test_run_analysis_pathway_enrichment_generates_plot_by_default():
+    df = _toy_counts()
+
+    gene_sets = {
+        "pathway_A": {"gene1", "gene2"},
+        "pathway_B": {"gene3", "gene4"},
+    }
+    background_genes = set(df.index)
+
+    results = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        gene_sets=gene_sets,
+        background_genes=background_genes,
+    )
+
+    assert "pathway_enrichment_fig" in results
+
+
 def test_run_analysis_missing_sample_raises():
     df = _toy_counts()
 
@@ -239,3 +259,42 @@ def test_run_analysis_live_enrichment_organism_calls_gprofiler_with_significant_
     assert called_kwargs["organism"] == "hsapiens"
     assert called_genes[0] <= set(df.index)  # only ever a subset of the tested genes
     assert results["live_pathway_enrichment"] is fake_result
+
+
+def test_run_analysis_live_enrichment_generates_plot_by_default():
+    df = _toy_counts()
+    fake_result = pd.DataFrame({
+        "source": ["GO:BP"], "name": ["fake term"], "p_value": [0.01], "intersection_size": [3],
+    })
+
+    with patch(
+        "omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        return_value=fake_result,
+    ):
+        results = run_analysis(
+            df,
+            group_1=["sample1", "sample2"],
+            group_2=["sample3", "sample4"],
+            live_enrichment_organism="hsapiens",
+        )
+
+    assert "live_pathway_enrichment_fig" in results
+
+
+def test_run_analysis_empty_live_enrichment_skips_plot():
+    df = _toy_counts()
+    empty_result = pd.DataFrame(columns=["source", "name", "p_value", "intersection_size"])
+
+    with patch(
+        "omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        return_value=empty_result,
+    ):
+        results = run_analysis(
+            df,
+            group_1=["sample1", "sample2"],
+            group_2=["sample3", "sample4"],
+            live_enrichment_organism="hsapiens",
+        )
+
+    assert "live_pathway_enrichment" in results
+    assert "live_pathway_enrichment_fig" not in results

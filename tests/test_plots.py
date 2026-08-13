@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from omicforge.differential_expression.methods import run_differential_expression
-from omicforge.visualization.plots import plot_volcano, plot_pca
+from omicforge.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
 
 
 def test_plot_volcano_returns_figure():
@@ -59,3 +59,74 @@ def test_plot_pca_too_few_genes_raises():
 
     with pytest.raises(ValueError, match=r"got 2 sample\(s\) and 1 gene"):
         plot_pca(df, labels)
+
+
+def _local_enrichment_df():
+    return pd.DataFrame({
+        "pathway": ["PATHWAY_A", "PATHWAY_B", "PATHWAY_C"],
+        "p_value": [0.001, 0.02, 0.5],
+        "adjusted_p_value": [0.003, 0.03, 0.5],
+        "overlap_count": [10, 4, 1],
+    })
+
+
+def test_plot_pathway_enrichment_local_schema_returns_figure():
+    fig = plot_pathway_enrichment(_local_enrichment_df())
+    assert fig is not None
+    # 3 rows in, 3 dots plotted (the scatter's y-tick labels are the
+    # pathway names since they're plotted against a categorical axis).
+    assert len(fig.axes[0].collections[0].get_offsets()) == 3
+
+
+def test_plot_pathway_enrichment_live_schema_returns_figure():
+    live_df = pd.DataFrame({
+        "source": ["GO:BP", "KEGG"],
+        "name": ["apoptotic process", "Apoptosis"],
+        "p_value": [0.02, 0.001],
+        "intersection_size": [5, 8],
+    })
+    fig = plot_pathway_enrichment(
+        live_df, name_col="name", pvalue_col="p_value", size_col="intersection_size",
+    )
+    assert fig is not None
+
+
+def test_plot_pathway_enrichment_respects_top_n():
+    df = pd.DataFrame({
+        "pathway": [f"PATHWAY_{i}" for i in range(30)],
+        "adjusted_p_value": np.linspace(0.001, 0.5, 30),
+        "overlap_count": range(30),
+    })
+    fig = plot_pathway_enrichment(df, top_n=5)
+    assert len(fig.axes[0].collections[0].get_offsets()) == 5
+
+
+def test_plot_pathway_enrichment_handles_zero_pvalue():
+    df = pd.DataFrame({
+        "pathway": ["PATHWAY_A", "PATHWAY_B"],
+        "adjusted_p_value": [0.0, 0.4],
+        "overlap_count": [10, 2],
+    })
+
+    with np.errstate(divide="raise"):
+        fig = plot_pathway_enrichment(df)
+
+    assert np.isfinite(fig.axes[0].collections[0].get_offsets()[:, 0]).all()
+
+
+def test_plot_pathway_enrichment_empty_raises():
+    empty = pd.DataFrame(columns=["pathway", "adjusted_p_value", "overlap_count"])
+    with pytest.raises(ValueError, match="empty"):
+        plot_pathway_enrichment(empty)
+
+
+def test_plot_pathway_enrichment_missing_column_raises():
+    df = pd.DataFrame({"pathway": ["PATHWAY_A"], "adjusted_p_value": [0.01]})
+    with pytest.raises(ValueError, match="overlap_count"):
+        plot_pathway_enrichment(df)
+
+
+def test_plot_pathway_enrichment_without_size_col():
+    df = pd.DataFrame({"pathway": ["PATHWAY_A", "PATHWAY_B"], "adjusted_p_value": [0.01, 0.2]})
+    fig = plot_pathway_enrichment(df, size_col=None)
+    assert fig is not None

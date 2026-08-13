@@ -20,7 +20,7 @@ from omicforge.qc.metrics import run_sample_qc
 from omicforge.filtering.methods import filter_low_count_genes
 from omicforge.normalization.methods import compute_cpm, log2_transform
 from omicforge.differential_expression.methods import run_differential_expression
-from omicforge.visualization.plots import plot_volcano, plot_pca
+from omicforge.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
 from omicforge.pathway_analysis.methods import run_pathway_enrichment_analysis
 from omicforge.annotation.methods import annotate_de_results, load_gene_annotation
 
@@ -96,7 +96,9 @@ def run_analysis(
         (``NaN`` for any gene not in the mapping). Default ``None`` — no
         annotation, no new column, existing callers see no change.
     generate_plots : bool, optional
-        Whether to generate a volcano plot and a PCA plot. Default True.
+        Whether to generate a volcano plot, a PCA plot, and (if any
+        enrichment was run) a pathway enrichment dot plot per enrichment
+        source. Default True.
     explain_results : bool, optional
         Whether to generate a natural-language explanation of the
         differential expression results using
@@ -127,8 +129,12 @@ def run_analysis(
         - "volcano_fig", "pca_fig": matplotlib Figures (if generate_plots=True)
         - "pathway_enrichment": local GMT-based enrichment results (if
           gene_sets/background_genes provided)
+        - "pathway_enrichment_fig": dot plot of the above (if
+          generate_plots=True and the result isn't empty)
         - "live_pathway_enrichment": g:Profiler enrichment results (if
           live_enrichment_organism was given)
+        - "live_pathway_enrichment_fig": dot plot of the above (if
+          generate_plots=True and the result isn't empty)
         - "explanation": AI-generated summary text (if explain_results=True)
     """
     if isinstance(counts, str):
@@ -182,6 +188,8 @@ def run_analysis(
         results["pathway_enrichment"] = run_pathway_enrichment_analysis(
             significant_genes, gene_sets, background_genes
         )
+        if generate_plots and not results["pathway_enrichment"].empty:
+            results["pathway_enrichment_fig"] = plot_pathway_enrichment(results["pathway_enrichment"])
 
     if live_enrichment_organism is not None:
         # Imported lazily, same reasoning as explain_de_results below: this
@@ -194,6 +202,11 @@ def run_analysis(
         results["live_pathway_enrichment"] = run_gprofiler_enrichment(
             significant_genes, organism=live_enrichment_organism
         )
+        if generate_plots and not results["live_pathway_enrichment"].empty:
+            results["live_pathway_enrichment_fig"] = plot_pathway_enrichment(
+                results["live_pathway_enrichment"],
+                name_col="name", pvalue_col="p_value", size_col="intersection_size",
+            )
 
     if explain_results:
         # Imported lazily: this pulls in the anthropic SDK / python-dotenv,

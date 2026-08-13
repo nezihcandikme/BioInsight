@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omicforge"
-version = "0.9.1"
+version = "0.10.0"
 description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression (Welch's or empirical-Bayes-moderated), gene ID/symbol annotation, visualization, local and live (g:Profiler) pathway enrichment, and GEO data acquisition helpers, runnable as a library or a CLI."
 requires-python = ">=3.9"
 dependencies = [

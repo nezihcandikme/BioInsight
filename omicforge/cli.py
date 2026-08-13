@@ -128,6 +128,10 @@ def _run(argv: list[str]) -> int:
         results["volcano_fig"].savefig(out_dir / "volcano.png", dpi=150, bbox_inches="tight")
     if "pca_fig" in results:
         results["pca_fig"].savefig(out_dir / "pca.png", dpi=150, bbox_inches="tight")
+    if "pathway_enrichment_fig" in results:
+        results["pathway_enrichment_fig"].savefig(out_dir / "pathway_enrichment.png", dpi=150, bbox_inches="tight")
+    if "live_pathway_enrichment_fig" in results:
+        results["live_pathway_enrichment_fig"].savefig(out_dir / "live_pathway_enrichment.png", dpi=150, bbox_inches="tight")
 
     if "explanation" in results:
         (out_dir / "explanation.txt").write_text(results["explanation"])

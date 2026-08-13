@@ -51,6 +51,106 @@ def plot_volcano(results_df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
+def plot_pathway_enrichment(
+    enrichment_df: pd.DataFrame,
+    name_col: str = "pathway",
+    pvalue_col: str = "adjusted_p_value",
+    size_col: str | None = "overlap_count",
+    top_n: int = 20,
+) -> plt.Figure:
+    """
+    Dot plot of pathway enrichment results: one row per pathway, x-axis is
+    -log10 p-value, dot size is the gene overlap/intersection count. Same
+    layout the field generally uses for this (e.g. clusterProfiler's
+    ``dotplot``) — significance and effect size in one view instead of
+    scanning a table.
+
+    Column names are parameters, not hardcoded, because the two enrichment
+    sources in this package use different schemas: the local hypergeometric
+    test (``run_pathway_enrichment_analysis``) returns ``pathway``/
+    ``adjusted_p_value``/``overlap_count`` (the defaults here), while the
+    live g:Profiler client (``run_gprofiler_enrichment``) returns ``name``/
+    ``p_value``/``intersection_size``. Same function, either source.
+
+    Parameters
+    ----------
+    enrichment_df : pd.DataFrame
+        Enrichment results, e.g. from ``run_pathway_enrichment_analysis``
+        or ``run_gprofiler_enrichment``.
+    name_col : str, optional
+        Column with the pathway/term name. Default ``"pathway"``.
+    pvalue_col : str, optional
+        Column with the p-value to plot (adjusted or raw — whichever the
+        source provides). Default ``"adjusted_p_value"``.
+    size_col : str, optional
+        Column with the gene overlap count, used for dot size. Default
+        ``"overlap_count"``. Pass ``None`` for uniform dot size if the
+        source doesn't provide one.
+    top_n : int, optional
+        Plot at most this many pathways, the most significant first.
+        Default 20 — enough to see the shape of the result without a plot
+        that's mostly whitespace and tiny text.
+
+    Returns
+    -------
+    plt.Figure
+
+    Raises
+    ------
+    ValueError
+        If ``enrichment_df`` is empty, or missing any of the requested
+        columns — an empty enrichment result is a legitimate outcome
+        (call code should check for it and skip plotting), but this
+        function's job is to plot rows, not to decide whether zero rows
+        is worth a blank chart.
+    """
+    if enrichment_df.empty:
+        raise ValueError("enrichment_df is empty — nothing to plot.")
+
+    required_cols = [name_col, pvalue_col] + ([size_col] if size_col else [])
+    missing = [c for c in required_cols if c not in enrichment_df.columns]
+    if missing:
+        raise ValueError(
+            f"enrichment_df is missing column(s) {missing}. "
+            f"Found columns: {list(enrichment_df.columns)}."
+        )
+
+    plot_df = enrichment_df.sort_values(pvalue_col).head(top_n).iloc[::-1]
+    plottable_pvalues = plot_df[pvalue_col].clip(lower=_MIN_PLOTTABLE_PVALUE)
+    neg_log10_p = -np.log10(plottable_pvalues)
+
+    if size_col:
+        counts = plot_df[size_col]
+        # Scaled so the smallest real overlap is still visible and the
+        # largest doesn't swallow its neighbors -- purely a display
+        # transform, doesn't touch the underlying counts.
+        sizes = 40 + 260 * (counts - counts.min()) / (counts.max() - counts.min() + 1e-9)
+    else:
+        counts = None
+        sizes = 120
+
+    fig_height = max(3, 0.4 * len(plot_df) + 1.5)
+    fig, ax = plt.subplots(figsize=(9, fig_height))
+    scatter = ax.scatter(neg_log10_p, plot_df[name_col], s=sizes, c=neg_log10_p, cmap="viridis", alpha=0.85)
+    ax.axvline(-np.log10(0.05), color="black", linestyle="--", linewidth=1, label="p = 0.05")
+
+    ax.set_xlabel(f"-Log10({pvalue_col})")
+    ax.set_title("Pathway Enrichment")
+    ax.legend(loc="lower right")
+    fig.colorbar(scatter, ax=ax, label=f"-Log10({pvalue_col})")
+
+    if counts is not None:
+        # A small size-legend, not tied to the color scale -- two encodings,
+        # two legends, so dot size doesn't get silently read as color.
+        for count_value in sorted(set([counts.min(), counts.median(), counts.max()])):
+            size = 40 + 260 * (count_value - counts.min()) / (counts.max() - counts.min() + 1e-9)
+            ax.scatter([], [], s=size, color="gray", alpha=0.6, label=f"overlap = {int(count_value)}")
+        ax.legend(loc="lower right")
+
+    fig.tight_layout()
+    return fig
+
+
 def plot_pca(df: pd.DataFrame, labels: pd.Series) -> plt.Figure:
     """
     2-component PCA scatter plot over samples, colored by ``labels``.

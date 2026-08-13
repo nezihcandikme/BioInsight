@@ -1,6 +1,6 @@
 # OmicForge
 
-A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.9.1.
+A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.10.0.
 
 Not a replacement for DESeq2 or edgeR — checked against both (see [Validation](#validation)), explicit about where it falls short.
 
@@ -59,7 +59,7 @@ load → validate → QC → normalize → (filter) → differential expression 
 - **Gene annotation** (optional): attach symbols from a local `gene_id,gene_symbol` CSV. No live API; unmapped genes get `NaN`, not a guess.
 - **Pathway enrichment** (optional): local hypergeometric test against a GMT file and an explicit background, or a live g:Profiler query (GO/KEGG/Reactome/WikiPathways) if you have internet access.
 - **GEO acquisition** (optional): list/download a GEO series' supplementary files and parse its sample metadata from a `GSE` accession.
-- **Plots**: volcano and PCA from the actual result objects.
+- **Plots**: volcano, PCA, and an enrichment dot plot (significance vs. gene overlap) when enrichment was run — all from the actual result objects.
 - **Plain-language summary** (optional, off by default): an LLM narrates a result table — doesn't verify anything, isn't the point of this project. Requires `ANTHROPIC_API_KEY`.
 
 ## Validation
