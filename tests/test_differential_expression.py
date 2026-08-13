@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from scipy import stats
 
-from bioinsight.differential_expression.methods import (
+from omicforge.differential_expression.methods import (
     compute_log_fold_change,
     compute_pvalues,
     compute_moderated_pvalues,

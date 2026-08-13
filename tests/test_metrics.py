@@ -1,6 +1,6 @@
 import pandas as pd
 
-from bioinsight.qc.metrics import library_size, genes_detected, flag_outlier_samples, run_sample_qc
+from omicforge.qc.metrics import library_size, genes_detected, flag_outlier_samples, run_sample_qc
 
 
 def test_library_size():

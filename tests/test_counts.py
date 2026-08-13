@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from bioinsight.io.counts import (
+from omicforge.io.counts import (
     CountMatrixError,
     check_all_integer,
     validate_counts,

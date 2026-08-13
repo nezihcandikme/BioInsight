@@ -2,14 +2,14 @@
 #
 # Runs DESeq2 and edgeR on the `airway` dataset (Himes et al. 2014, PLoS ONE;
 # GEO GSE52778) using each package's own standard, idiomatic workflow --
-# not tuned or nudged toward agreeing with BioInsight in any way. Also
-# writes out the raw count matrix and sample metadata as CSVs so BioInsight
+# not tuned or nudged toward agreeing with OmicForge in any way. Also
+# writes out the raw count matrix and sample metadata as CSVs so OmicForge
 # can be run on the exact same input.
 #
 # `airway`: 8 human airway smooth muscle samples, 4 cell lines, each with an
 # untreated and a dexamethasone-treated sample. It's the dataset DESeq2's
 # own vignette uses as its worked example, which makes it a fair, standard
-# choice here rather than something cherry-picked to make BioInsight look
+# choice here rather than something cherry-picked to make OmicForge look
 # good.
 #
 # Usage:
@@ -46,7 +46,7 @@ counts <- assay(airway)
 meta <- as.data.frame(colData(airway))[, c("SampleName", "cell", "dex")]
 meta$dex <- factor(meta$dex, levels = c("untrt", "trt"))
 
-# --- write raw inputs so BioInsight can be run on the identical matrix ---
+# --- write raw inputs so OmicForge can be run on the identical matrix ---
 counts_out <- data.frame(gene_id = rownames(counts), counts, check.names = FALSE)
 write.csv(counts_out, file.path(data_dir, "airway_counts.csv"), row.names = FALSE)
 write.csv(data.frame(sample = colnames(counts), dex = meta$dex, cell = meta$cell),

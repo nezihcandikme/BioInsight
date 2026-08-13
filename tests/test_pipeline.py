@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from bioinsight.pipeline import run_analysis
+from omicforge.pipeline import run_analysis
 
 
 def _toy_counts():
@@ -209,7 +209,7 @@ def test_run_analysis_gene_annotation_as_path(tmp_path):
 def test_run_analysis_without_live_enrichment_organism_skips_it():
     df = _toy_counts()
 
-    with patch("bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
+    with patch("omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
         results = run_analysis(
             df, group_1=["sample1", "sample2"], group_2=["sample3", "sample4"], generate_plots=False,
         )
@@ -223,7 +223,7 @@ def test_run_analysis_live_enrichment_organism_calls_gprofiler_with_significant_
     fake_result = pd.DataFrame({"source": ["GO:BP"], "name": ["fake term"], "p_value": [0.01]})
 
     with patch(
-        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        "omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
         return_value=fake_result,
     ) as mock_query:
         results = run_analysis(

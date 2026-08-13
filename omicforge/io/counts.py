@@ -61,7 +61,7 @@ def check_nonnegative_counts(df: pd.DataFrame) -> bool:
 def check_likely_correct_orientation(df: pd.DataFrame) -> bool:
     """
     Heuristic check that ``df`` looks like genes-as-rows, samples-as-columns
-    (the orientation every other function in BioInsight assumes).
+    (the orientation every other function in OmicForge assumes).
 
     This can't be known for certain from the numbers alone — it's a sanity
     check, not a proof. A matrix with more columns than rows and only a
@@ -128,7 +128,7 @@ def validate_counts(df: pd.DataFrame) -> None:
     if not check_likely_correct_orientation(df):
         warnings.warn(
             f"This count matrix has {df.shape[1]} columns and only "
-            f"{df.shape[0]} rows. BioInsight expects genes as rows and "
+            f"{df.shape[0]} rows. OmicForge expects genes as rows and "
             "samples as columns — if that's backwards here, transpose "
             "your input (df.T) before passing it in.",
             stacklevel=2,

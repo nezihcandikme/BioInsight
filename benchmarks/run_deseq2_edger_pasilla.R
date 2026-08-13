@@ -2,7 +2,7 @@
 #
 # Second, independent benchmark dataset -- same purpose as
 # run_deseq2_edger.R, different organism and design, to check whether the
-# precision/recall pattern found on `airway` is a property of BioInsight's
+# precision/recall pattern found on `airway` is a property of OmicForge's
 # method or just a property of that one dataset.
 #
 # `pasilla`: Brooks et al. 2011 (GEO GSE18508) -- Drosophila melanogaster
@@ -59,7 +59,7 @@ counts <- counts[, rownames(coldata)]
 
 coldata$condition <- factor(coldata$condition, levels = c("untreated", "treated"))
 
-# --- write raw inputs so BioInsight can be run on the identical matrix ---
+# --- write raw inputs so OmicForge can be run on the identical matrix ---
 counts_out <- data.frame(gene_id = rownames(counts), counts, check.names = FALSE)
 write.csv(counts_out, file.path(data_dir, "pasilla_counts.csv"), row.names = FALSE)
 write.csv(data.frame(sample = rownames(coldata), condition = coldata$condition, type = coldata$type),

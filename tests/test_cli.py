@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from bioinsight.cli import main
+from omicforge.cli import main
 
 
 def test_cli_runs_end_to_end_and_writes_outputs(tmp_path, capsys):
@@ -189,7 +189,7 @@ def test_cli_live_enrichment_organism_writes_output(tmp_path):
     fake_result = pd.DataFrame({"source": ["GO:BP"], "name": ["fake term"], "p_value": [0.01]})
 
     with patch(
-        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        "omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
         return_value=fake_result,
     ) as mock_query:
         exit_code = main([
@@ -209,7 +209,7 @@ def test_cli_live_enrichment_organism_writes_output(tmp_path):
 def test_cli_without_live_enrichment_organism_skips_it(tmp_path):
     out_dir = tmp_path / "out"
 
-    with patch("bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
+    with patch("omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment") as mock_query:
         main([
             "tests/fixtures/cli_counts.csv",
             "--group1", "sample1,sample2",
@@ -224,7 +224,7 @@ def test_cli_without_live_enrichment_organism_skips_it(tmp_path):
 
 def test_cli_live_enrichment_network_failure_exits_nonzero(tmp_path):
     with patch(
-        "bioinsight.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
+        "omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment",
         side_effect=ConnectionError("Could not reach g:Profiler"),
     ):
         exit_code = main([

@@ -106,12 +106,13 @@ not failure.
 
 **This doesn't "validate" OmicForge and isn't meant to.** It measures
 the actual size of the gap between a simple exploratory method and the
-field's standard tools, on one real dataset. If the gap turns out to be
-small for genes with clear, large effects and large for marginal ones,
-that's a specific, useful, falsifiable claim to make about when
-OmicForge's numbers are trustworthy — a much stronger statement than
+field's standard tools, on the real datasets checked so far. If the gap
+turns out to be small for genes with clear, large effects and large for
+marginal ones, that's a specific, useful, falsifiable claim to make about
+when OmicForge's numbers are trustworthy — a much stronger statement than
 "it works on toy data," which is all that could honestly be said before
-this existed.
+this existed. Two datasets is a real check, not a large one; the
+[README](../README.md#limitations) says so directly.
 
 Whatever the actual numbers come out to be, they get written up as-run
 in `DEVLOG.md` — including if they're unflattering.

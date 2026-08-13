@@ -51,7 +51,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">RNA-seq analysis pipeline · v0.9.0</span>
+        <span class="eyebrow">RNA-seq analysis pipeline · v0.9.1</span>
         <h1>Turn a count matrix<br />into something you can trust.</h1>
         <p class="lede">
           Validation, quality control, normalization, exploratory differential
@@ -70,23 +70,23 @@
             </div>
             <pre><code><span class="c">$ pip install -e .</span>
 
-<span class="c">$ bioinsight counts.csv \
+<span class="c">$ omicforge counts.csv \
     --group1 control_1,control_2,control_3 \
     --group2 treated_1,treated_2,treated_3 \
     --min-count 10</span>
 
 <span class="n">4000 genes tested, 515 significant at alpha=0.05, |log2FC|&gt;1.0.
-Results written to bioinsight_output/</span>
+Results written to omicforge_output/</span>
 
 <span class="c"># or as a library, if you want the intermediate objects:</span>
-<span class="k">from</span> <span class="n">bioinsight.pipeline</span> <span class="k">import</span> <span class="n">run_analysis</span>
+<span class="k">from</span> <span class="n">omicforge.pipeline</span> <span class="k">import</span> <span class="n">run_analysis</span>
 <span class="n">results</span> = <span class="n">run_analysis</span>(<span class="s">"counts.csv"</span>, group_1=[...], group_2=[...])</code></pre>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 2. WHAT BIOINSIGHT DOES -->
+    <!-- 2. WHAT OMICFORGE DOES -->
     <section id="what" class="section-border-top">
       <div class="container">
         <div class="section-head">
@@ -265,7 +265,7 @@ Results written to bioinsight_output/</span>
         <div class="section-head">
           <span class="eyebrow">In practice</span>
           <h2>Real output, from real code.</h2>
-          <p>The plots below came out of an actual <code>bioinsight</code> CLI run on a synthetic 4,000-gene dataset — same command, same defaults you'd run yourself.</p>
+          <p>The plots below came out of an actual <code>omicforge</code> CLI run on a synthetic 4,000-gene dataset — same command, same defaults you'd run yourself.</p>
         </div>
 
         <div class="output-grid">
@@ -376,7 +376,7 @@ Results written to bioinsight_output/</span>
             <span class="prompt">$</span>
             <span>git clone https://github.com/nezihcandikme/BioInsight.git &amp;&amp; pip install -e .</span>
           </div>
-          <p class="cta-note">Requires Python 3.9+. Installs a <code>bioinsight</code> command as well as the library.</p>
+          <p class="cta-note">Requires Python 3.9+. Installs an <code>omicforge</code> command as well as the library.</p>
         </div>
       </div>
     </section>

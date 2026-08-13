@@ -1,61 +1,95 @@
-OmicForge
+# OmicForge
 
-OmicForge is a Python pipeline for taking an RNA-seq count matrix from "okay, I have a CSV" to actual exploratory results: validation, sample quality control, normalization, differential expression, plots, and pathway enrichment — with an optional layer that asks an LLM to explain the output in plain language.
+A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.9.1.
 
-I'm building it because I wanted to understand what actually happens between getting biological data and claiming that it means something. Turns out there are approximately seventeen ways to produce convincing nonsense before breakfast, so OmicForge is currently focused on making those mistakes loud, testable, and difficult to ignore.
+Not a replacement for DESeq2 or edgeR — checked against both (see [Validation](#validation)), explicit about where it falls short.
 
-Current version: v0.9.0. It works, it has tests, and it is actively improving. It is also an educational project — not a production replacement for DESeq2, edgeR, or an actual bioinformatician who has seen your experimental design.
+## Quick start
 
-So what is this, exactly?
+```bash
+git clone https://github.com/nezihcandikme/BioInsight.git
+cd BioInsight
+pip install -e .
+```
 
-OmicForge started with one extremely glamorous problem: validating a CSV.
+CLI, on a raw count matrix (genes as rows, samples as columns):
 
-Then the CSV raised questions.
+```bash
+omicforge counts.csv \
+  --group1 control_1,control_2,control_3 \
+  --group2 treated_1,treated_2,treated_3 \
+  --min-count 10
+```
 
-Are these really non-negative integer counts?
+Writes `differential_expression.csv`, `qc.csv`, a volcano plot, and a PCA plot to `omicforge_output/`.
 
-Are genes rows and samples columns, or did someone rotate reality by 90 degrees?
+As a library, for the intermediate objects instead of files:
 
-Does one sample have dramatically fewer reads than the others?
+```python
+from omicforge.pipeline import run_analysis
 
-How do I compare samples with different sequencing depths?
+results = run_analysis(
+    "counts.csv",
+    group_1=["control_1", "control_2", "control_3"],
+    group_2=["treated_1", "treated_2", "treated_3"],
+    min_count=10,
+)
 
-Which genes differ between conditions?
+de = results["differential_expression"]  # log fold change, p-values, significance
+```
 
-If I test thousands of genes, how many "discoveries" are just statistical noise wearing a lab coat?
+Every stage (`validate_counts`, `run_sample_qc`, `compute_cpm`, `run_differential_expression`, ...) is also importable on its own.
 
-Do those genes converge on any interesting pathways?
+## Why
 
-Each question became a piece of the pipeline. The result follows the same broad reasoning order a real analysis does: load → validate → inspect → normalize → compare → visualize → interpret.
+I'm a high-school student learning statistics and computational biology by building something slightly beyond what I already know. I wanted to understand the actual mechanics between "here's a count matrix" and "these genes changed" — what makes a count matrix valid, why normalization matters, why testing thousands of genes at once needs correction, why significance isn't the same as biological importance.
 
-The code running is step one. The numbers meaning what I think they mean is the actual objective.
+The code running is step one. The numbers meaning what I think they mean is the actual objective. The dated account of what changed, why, and what didn't work is in [`DEVLOG.md`](DEVLOG.md).
 
-Why I'm building it
+## What it does
 
-I'm a high-school student learning programming, statistics, and computational biology by building things that are slightly beyond what I currently know how to build.
+```
+load → validate → QC → normalize → (filter) → differential expression → (annotate) → (enrich) → plot
+```
 
-Before OmicForge, I understood RNA-seq in the dangerously comfortable summary-version: count reads per gene, compare two conditions, find changed genes. That explanation is technically related to reality, but it skips nearly everything capable of ruining an analysis.
+- **Validation**: non-negative integer counts, no duplicate IDs, no missing values, a transposed-matrix heuristic — specific error messages, checked first.
+- **Sample QC**: library size, genes detected, MAD-based outlier flags.
+- **Normalization**: CPM + log2 scale, with optional low-count gene filtering first.
+- **Differential expression**: Welch's t-test per gene (default), or an opt-in empirical-Bayes moderated t-test that borrows variance across genes (`method="moderated"`). Benjamini-Hochberg correction either way.
+- **Gene annotation** (optional): attach symbols from a local `gene_id,gene_symbol` CSV. No live API; unmapped genes get `NaN`, not a guess.
+- **Pathway enrichment** (optional): local hypergeometric test against a GMT file and an explicit background, or a live g:Profiler query (GO/KEGG/Reactome/WikiPathways) if you have internet access.
+- **GEO acquisition** (optional): list/download a GEO series' supplementary files and parse its sample metadata from a `GSE` accession.
+- **Plots**: volcano and PCA from the actual result objects.
+- **Plain-language summary** (optional, off by default): an LLM narrates a result table — doesn't verify anything, isn't the point of this project. Requires `ANTHROPIC_API_KEY`.
 
-Building the pipeline forced me to confront those missing layers directly: what makes a count matrix valid, why library size matters, why normalization is not one universal operation, why a difference of means only becomes a fold change on the right scale, why thousands of simultaneous tests require correction, and why statistical significance is not the same thing as biological importance.
+## Validation
 
-OmicForge is the record of learning those lessons in code — one function, one broken test, and one increasingly specific error message at a time. The full decision-by-decision version of that record lives in `DEVLOG.md`.
+Checked against real DESeq2 and real edgeR (own default settings) on two independent public datasets: [`airway`](https://bioconductor.org/packages/release/data/experiment/html/airway.html) (human) and [`pasilla`](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html) (*Drosophila*) — different organisms, labs, and designs. Methodology, caveats, and reproduction scripts: [`benchmarks/`](benchmarks/).
 
-What it does, roughly
+| dataset | method | precision (DESeq2 / edgeR) | recall (DESeq2 / edgeR) | log2FC Pearson r (DESeq2 / edgeR) |
+|---|---|---:|---:|---:|
+| airway | welch | 1.0 / 1.0 | 0.075 / 0.098 | 0.938 / 0.947 |
+| airway | moderated | 1.0 / 1.0 | 0.165 / 0.217 | 0.938 / 0.947 |
+| pasilla | welch | 1.0 / 1.0 | 0.085 / 0.104 | 0.974 / 0.975 |
+| pasilla | moderated | 1.0 / 1.0 | 0.174 / 0.215 | 0.974 / 0.975 |
 
-Raw counts go in. Along the way: the data gets checked for the kind of problems that quietly wreck an analysis, each sample gets sanity-checked against the others, samples get put on a comparable scale, genes get tested for meaningful differences between conditions (either gene-by-gene, or with a second method that borrows statistical power across genes when a gene's own replicates are too noisy to trust alone), the results get corrected for the fact that testing thousands of things at once produces false alarms, and — if the numbers hold up — the changed genes get checked for whether they cluster into any known biological pathways. Plots come out along the way so you can actually look at the data instead of just trusting a table.
+Precision: of the genes OmicForge calls significant, the fraction DESeq2/edgeR also call significant. Recall: the reverse. No false-positive calls relative to the reference DESeq2/edgeR calls were observed in these two benchmarks — not the same claim as a universal zero false-positive rate, and two datasets don't establish one. Welch's t-test tests each gene in isolation and finds a fraction of what DESeq2/edgeR find, since those tools borrow statistical power across genes with similar expression and a plain per-gene test doesn't. The moderated method closes some of that gap the same way, roughly doubling recall at the same precision — a different variance assumption, not a strictly better default.
 
-Every piece of that also works on its own, in case you want to stop and poke at an intermediate result instead of running the whole thing end to end. It also runs as a command-line tool now, not just as a library you import — point it at a CSV and two group names and it writes the results table, the plots, and the enrichment table to a folder, without needing a Python script in between. Results can also come back with actual gene names attached instead of just the accession IDs they were tested under, if you hand it a mapping — nothing fetched over the network, just a local file you already have. Pathway enrichment now has a second, opt-in source too: alongside the original local GMT-file lookup, it can query g:Profiler's live, curated databases directly, if you're running somewhere with real internet access. And if the data you want to analyze lives in a GEO series rather than on your disk already, there's now a small set of helpers that fetch a series' supplementary files and sample metadata straight from NCBI, so getting from a GSE accession to a usable count matrix doesn't mean hand-building the FTP URL yourself.
+## Limitations
 
-Where it stands
+- Bulk RNA-seq count matrices only. No single-cell, no other omics types, despite the name's broader ambition.
+- Default DE method (Welch's t-test) has measurably lower recall than DESeq2/edgeR on every dataset checked so far — see the table above. Expected and explained, not a bug, but real effects get missed.
+- Two benchmark datasets is a real check, not a large one. Other tissues, organisms, or designs (unbalanced groups, batch effects, more than two conditions) haven't been measured.
+- Two-group comparisons only — no covariates, paired samples, or multi-factor models.
+- Local pathway enrichment has no gene-set-size or overlap correction beyond Benjamini-Hochberg; only as good as the background you give it.
+- The LLM layer narrates numbers, doesn't verify them — a summary, not an additional check.
 
-It works, on real-shaped toy data and on real public datasets, with a test for every rough edge I've found so far (and I keep finding more). It's also now actually been checked against DESeq2 and edgeR, not just labeled "unvalidated" and left there: on real RNA-seq data, its fold-change estimates track both tools closely, and every gene it calls significant, both of the field-standard tools also call significant — no false alarms, with either testing method. What the default, simplest method doesn't do is find most of what DESeq2 and edgeR find; a plain per-gene t-test has measurably less statistical power than models built to borrow strength across genes. The second, opt-in method exists because of that exact finding — it borrows that same kind of strength across genes, and on the same real dataset it found more than double the significant genes the default method did, while keeping the same zero-false-alarm result. That whole pattern — zero false alarms, a fraction of the recall — isn't just one dataset's quirk either: checked again on a second, independent public dataset (different organism, different lab, different experimental design), the numbers landed within a couple of percentage points of the first. Neither number is the final word; all of it is in `benchmarks/`, along with the methodology and the honest caveats. It also only understands one kind of data right now — bulk RNA-seq count matrices. Broader ambitions exist; pretending they're already real would just make the README more advanced than the software.
+## Roadmap
 
-Where it's headed
+**Near term**: strengthen bulk RNA-seq validation, more benchmark datasets, better experimental-design/metadata handling, better enrichment reporting.
 
-The long-term idea is bigger than RNA-seq: something that can look at a scientific dataset, figure out what kind of analysis actually applies to it, ask for whatever context is missing, run validated methods instead of guessing, and explain the result honestly instead of impressively.
+**Later**: additional transcriptomic workflows; broader omics support where scientifically justified, not by default.
 
-That's a long way off from "upload arbitrary CSV, receive truth." The concrete near-term items keep clearing: barely-expressed genes no longer get tested by default reasoning alone, pathway enrichment reads the same .gmt files MSigDB ships, and the results are now checked against DESeq2 and edgeR instead of just described as unchecked — all three used to be roadmap items, none of them still are.
+## Development
 
-Current mission, in short: keep finding out exactly where the statistical layer's numbers can and can't be trusted, before teaching it new tricks. The moderated testing method is the first real example of that loop actually closing — a measured weakness turned into a specific fix, then checked against the same benchmark that found the weakness in the first place.
-
-The detailed version — what changed, when, and why — is in `DEVLOG.md`.
+`DEVLOG.md` has the day-by-day account: what changed, what broke, what got rejected, and why. Git commit messages say *what* changed; that file is for *why*.

@@ -10,7 +10,7 @@ Organized by day, not by session — a day can have several working sessions in 
 
 ## Aug 6 — the CSV era
 
-Started with the single least glamorous problem in the whole pipeline: is this CSV even a valid count matrix. Built the exception hierarchy (`CountMatrixError` and specific subclasses for non-integer, negative, duplicate-index, and missing-value cases) instead of one generic error, because "your data is bad" is useless and "column X has negative values" is actionable.
+Started with the most mundane problem in the whole pipeline: is this CSV even a valid count matrix. Built the exception hierarchy (`CountMatrixError` and specific subclasses for non-integer, negative, duplicate-index, and missing-value cases) instead of one generic error, because "your data is bad" is useless and "column X has negative values" is actionable.
 
 Decision worth naming: `validate_counts` collects *every* problem it finds and raises them together, instead of stopping at the first one. Nobody wants to fix one validation error, rerun, hit the next one, rerun again — better to get the whole list at once.
 
@@ -34,7 +34,7 @@ Benjamini-Hochberg correction, a minimum-sample-size check for the t-test, volca
 
 ## Aug 11 — make it harder to fool, then make it honest about what it is
 
-The longest day so far, by a wide margin. Grouped by topic below, not by sitting, since the topics are what matter a year from now — not how many times I got up for coffee.
+The longest day so far, by a wide margin. Grouped by topic below, not by sitting, since the topics are what matter a year from now, not the session breakdown.
 
 **Correctness pass (v0.3.1).** A full walk through the whole pipeline looking for the gap between "the code doesn't crash" and "the code is right." Found more than expected:
 
@@ -156,9 +156,11 @@ The moderated run confirms the same thing, even more tightly. `pasilla` (moderat
 
 Test count: 114 → 134.
 
----
+**Cleanup pass: finished the rename, rewrote the README (v0.9.1).** The visible-text rename from the previous entry left the actual package as `bioinsight` — imports, the installed command, `pyproject.toml`. That's done now: `bioinsight/` is `omicforge/`, every `from bioinsight...` import is `from omicforge...`, the console script is `omicforge` (was `bioinsight`), and the CLI's default output directory changed with it (`omicforge_output/`). Ran the full test suite after: 134 passed, no changes needed beyond the import paths themselves.
 
-## Decisions I looked at and didn't make
+What deliberately didn't change: this file's own historical entries (everything above this one) still say `bioinsight`/`BioInsight`, because that was the package's actual name when those entries were written — editing them would misrepresent what was true at the time, not just relabel it. Same reasoning for the committed benchmark outputs: `comparison_summary*.md` keep "BioInsight" in their titles and tables (real output from real runs, not something to retouch), and the `.png` scatter plots keep it as a rendered axis label, since that's pixel data I can't text-edit — a rerun would fix it, not worth doing just for a label. `compare_results.py` itself is updated for future runs, including its internal `bioinsight_significant` summary-dict key, now `omicforge_significant` — meaning a freshly generated comparison table will have a different column name than the already-committed ones. Also removed `requirements.txt`: unreferenced anywhere in the repo, unmaintained since `v0.2`, and duplicating what `pyproject.toml` already declares properly.
+
+Also rewrote the README from scratch rather than editing it — it had grown into something closer to an essay than a working project's front page: no runnable install/usage example anywhere in it, a joke or metaphor in nearly every paragraph, and claims like "no false alarms" stated more broadly than the two-dataset benchmark actually supports. New version leads with a working `pip install` + CLI/import example instead of ending with one implied, adds a benchmark results table instead of burying the numbers in prose, states the precision/recall claim as what it actually is (no false positives *relative to the DESeq2/edgeR calls checked so far*, not a universal guarantee), and moves the optional LLM explanation layer down to one bullet instead of the opening description. About 30% shorter by word count. The personality didn't get deleted, just thinned out to where it was actually adding something.
 
 Worth writing down what got *rejected*, not just what shipped:
 

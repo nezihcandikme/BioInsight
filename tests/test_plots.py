@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bioinsight.differential_expression.methods import run_differential_expression
-from bioinsight.visualization.plots import plot_volcano, plot_pca
+from omicforge.differential_expression.methods import run_differential_expression
+from omicforge.visualization.plots import plot_volcano, plot_pca
 
 
 def test_plot_volcano_returns_figure():

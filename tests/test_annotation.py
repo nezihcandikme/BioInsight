@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bioinsight.annotation.methods import annotate_de_results, load_gene_annotation
+from omicforge.annotation.methods import annotate_de_results, load_gene_annotation
 
 
 def test_load_gene_annotation_parses_mapping():

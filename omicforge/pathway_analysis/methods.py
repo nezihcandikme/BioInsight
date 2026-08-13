@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.stats import hypergeom
 
-from bioinsight.differential_expression.methods import compute_adjusted_pvalues
+from omicforge.differential_expression.methods import compute_adjusted_pvalues
 
 
 def compute_enrichment_pvalue(significant_genes: set[str], gene_set: set[str], background_genes: set[str]) -> float:

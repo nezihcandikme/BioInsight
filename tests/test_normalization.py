@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from bioinsight.normalization.methods import compute_cpm, log2_transform
+from omicforge.normalization.methods import compute_cpm, log2_transform
 
 
 def test_compute_cpm():

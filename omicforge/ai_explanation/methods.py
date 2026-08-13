@@ -13,7 +13,7 @@ def explain_de_results(results_df: pd.DataFrame) -> str:
     statistical tool — it does not re-derive or double-check any numbers,
     it just narrates what's already in ``results_df``. The underlying
     analysis is still the exploratory method described in
-    ``bioinsight.differential_expression.methods``, so the caveats there
+    ``omicforge.differential_expression.methods``, so the caveats there
     apply to whatever this function says too.
 
     Parameters
