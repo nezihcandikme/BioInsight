@@ -1,6 +1,6 @@
 import pandas as pd
 
-from omicforge.core import library_size, genes_detected
+from deconcord.core import library_size, genes_detected
 
 
 def flag_outlier_samples(sizes: pd.Series, threshold: float = 3.0) -> pd.Series:

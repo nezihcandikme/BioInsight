@@ -19,7 +19,7 @@ because that part genuinely isn't uniform across GEO submissions.
 Every function here makes a live network call to
 ``ftp.ncbi.nlm.nih.gov`` and needs outbound internet access -- confirmed
 unavailable in this project's own development sandbox (see
-``omicforge.pathway_analysis.live_enrichment`` for the same caveat, and
+``deconcord.pathway_analysis.live_enrichment`` for the same caveat, and
 the reason both are opt-in, self-contained modules rather than something
 ``run_analysis`` calls automatically).
 """
@@ -158,7 +158,7 @@ def fetch_geo_sample_metadata(gse_id: str, timeout: float = 30.0) -> pd.DataFram
     Fetch and parse a GEO series' sample metadata (the ``!Sample_*`` lines
     of its series matrix file) into a DataFrame -- useful for figuring out
     which samples belong to which experimental group before calling
-    ``omicforge.pipeline.run_analysis``.
+    ``deconcord.pipeline.run_analysis``.
 
     Parameters
     ----------

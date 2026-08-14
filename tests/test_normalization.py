@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from omicforge.normalization.methods import compute_cpm, log2_transform
+from deconcord.normalization.methods import compute_cpm, log2_transform
 
 
 def test_compute_cpm():

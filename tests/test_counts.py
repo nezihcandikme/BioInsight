@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from omicforge.io.counts import (
+from deconcord.io.counts import (
     CountMatrixError,
     check_all_integer,
     validate_counts,

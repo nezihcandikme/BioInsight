@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from omicforge.io.geo import (
+from deconcord.io.geo import (
     _series_dir_url,
     download_geo_supplementary_file,
     fetch_geo_sample_metadata,

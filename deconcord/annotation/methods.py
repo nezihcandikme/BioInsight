@@ -6,8 +6,8 @@ count matrix used -- commonly an Ensembl ID like ``ENSG00000141510``,
 correct but not exactly something you can eyeball. This module doesn't
 fetch symbols from Ensembl, BioMart, or any other live service: it reads
 a plain two-column mapping file you already have (or exported once,
-outside OmicForge), the same "point it at a local file" approach
-``omicforge.pathway_analysis.gmt`` takes for gene sets. No network
+outside DEConcord), the same "point it at a local file" approach
+``deconcord.pathway_analysis.gmt`` takes for gene sets. No network
 dependency, no API to go down, and no surprise about which annotation
 build/release the symbols came from -- that's on whatever file you hand
 it.
@@ -41,7 +41,7 @@ def load_gene_annotation(path: str, id_col: str = "gene_id", symbol_col: str = "
     -------
     dict[str, str]
         Gene ID -> gene symbol, ready to pass to ``annotate_de_results``
-        or ``omicforge.pipeline.run_analysis``.
+        or ``deconcord.pipeline.run_analysis``.
 
     Raises
     ------

@@ -1,6 +1,6 @@
 import pytest
 
-from omicforge.pathway_analysis.methods import compute_enrichment_pvalue, run_pathway_enrichment_analysis
+from deconcord.pathway_analysis.methods import compute_enrichment_pvalue, run_pathway_enrichment_analysis
 
 
 def test_compute_enrichment_pvalue_no_overlap():

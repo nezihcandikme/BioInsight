@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "omicforge"
-version = "0.11.0"
-description = "A small, actively-built RNA-seq pipeline: validation, QC, low-count filtering, normalization, exploratory differential expression (Welch's, empirical-Bayes-moderated, or covariate-adjusted), gene ID/symbol annotation, visualization, local and live (g:Profiler) pathway enrichment, and GEO data acquisition helpers, runnable as a library or a CLI."
+name = "deconcord"
+version = "0.12.0"
+description = "DEConcord: robustness/concordance analysis for RNA-seq differential expression -- given DE result tables from DESeq2, edgeR, or any other tool, computes method concordance (significant-gene overlap, directional and effect-size agreement, concordant/discordant genes). Also ships the RNA-seq pipeline (validation, QC, normalization, exploratory/covariate-adjusted DE, annotation, pathway enrichment, visualization) that generates the DE tables it compares."
 requires-python = ">=3.9"
 dependencies = [
     "pandas",
@@ -22,8 +22,8 @@ dependencies = [
 dev = ["pytest"]
 
 [project.scripts]
-omicforge = "omicforge.cli:main"
+deconcord = "deconcord.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["omicforge*"]
+include = ["deconcord*"]

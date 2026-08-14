@@ -27,7 +27,7 @@ def load_gmt(path: str) -> dict[str, set[str]]:
     -------
     dict[str, set[str]]
         Gene set name -> set of gene IDs, ready to pass as ``gene_sets`` to
-        ``run_pathway_enrichment_analysis`` or ``omicforge.pipeline.run_analysis``.
+        ``run_pathway_enrichment_analysis`` or ``deconcord.pipeline.run_analysis``.
 
     Raises
     ------

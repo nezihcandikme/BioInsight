@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from omicforge.differential_expression.methods import run_differential_expression
-from omicforge.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
+from deconcord.differential_expression.methods import run_differential_expression
+from deconcord.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
 
 
 def test_plot_volcano_returns_figure():

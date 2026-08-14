@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from omicforge.core import library_size
+from deconcord.core import library_size
 
 
 def compute_cpm(df: pd.DataFrame) -> pd.DataFrame:

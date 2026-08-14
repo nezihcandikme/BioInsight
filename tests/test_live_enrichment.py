@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from omicforge.pathway_analysis.live_enrichment import run_gprofiler_enrichment
+from deconcord.pathway_analysis.live_enrichment import run_gprofiler_enrichment
 
 
 class _FakeResponse:

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from omicforge.filtering.methods import filter_low_count_genes
+from deconcord.filtering.methods import filter_low_count_genes
 
 
 def test_filter_low_count_genes_keeps_well_expressed_genes():

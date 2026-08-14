@@ -1,5 +1,5 @@
 """
-End-to-end orchestration for OmicForge.
+End-to-end orchestration for DEConcord.
 
 ``run_analysis`` wires together the individual modules (I/O validation, QC,
 normalization, differential expression, visualization, and optional pathway
@@ -7,7 +7,7 @@ enrichment / AI explanation) into a single call, so users don't have to
 manually chain every step together.
 
 NOTE: the differential expression step is a basic, exploratory
-mean-difference t-test (see ``omicforge.differential_expression.methods``),
+mean-difference t-test (see ``deconcord.differential_expression.methods``),
 not a replacement for count-based tools like DESeq2 or edgeR.
 """
 
@@ -15,17 +15,17 @@ from __future__ import annotations
 
 import pandas as pd
 
-from omicforge.io.counts import load_count_matrix, validate_counts
-from omicforge.qc.metrics import run_sample_qc
-from omicforge.filtering.methods import filter_low_count_genes
-from omicforge.normalization.methods import compute_cpm, log2_transform
-from omicforge.differential_expression.methods import (
+from deconcord.io.counts import load_count_matrix, validate_counts
+from deconcord.qc.metrics import run_sample_qc
+from deconcord.filtering.methods import filter_low_count_genes
+from deconcord.normalization.methods import compute_cpm, log2_transform
+from deconcord.differential_expression.methods import (
     run_differential_expression,
     run_differential_expression_with_covariates,
 )
-from omicforge.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
-from omicforge.pathway_analysis.methods import run_pathway_enrichment_analysis
-from omicforge.annotation.methods import annotate_de_results, load_gene_annotation
+from deconcord.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
+from deconcord.pathway_analysis.methods import run_pathway_enrichment_analysis
+from deconcord.annotation.methods import annotate_de_results, load_gene_annotation
 
 
 def run_analysis(
@@ -48,7 +48,7 @@ def run_analysis(
     live_enrichment_organism: str | None = None,
 ) -> dict:
     """
-    Run the full OmicForge workflow: load/validate, QC, normalize,
+    Run the full DEConcord workflow: load/validate, QC, normalize,
     differential expression, and (optionally) plots, pathway enrichment,
     and an AI-generated explanation.
 
@@ -99,7 +99,7 @@ def run_analysis(
         Sample metadata indexed by sample name, covering every sample in
         ``group_1 + group_2``. Only used when ``covariate_cols`` is also
         given (e.g. as returned by
-        ``omicforge.io.geo.fetch_geo_sample_metadata``, or your own CSV
+        ``deconcord.io.geo.fetch_geo_sample_metadata``, or your own CSV
         loaded with the sample name as the index).
     covariate_cols : list[str], optional
         Column names in ``metadata`` to adjust for — a batch, sex, or any
@@ -120,7 +120,7 @@ def run_analysis(
     gene_annotation : dict[str, str] or str, optional
         Either a pre-loaded gene ID -> gene symbol dict, or a path to a
         two-column CSV to load one from (see
-        ``omicforge.annotation.methods.load_gene_annotation``). If given,
+        ``deconcord.annotation.methods.load_gene_annotation``). If given,
         the differential expression results gain a ``gene_symbol`` column
         (``NaN`` for any gene not in the mapping). Default ``None`` — no
         annotation, no new column, existing callers see no change.
@@ -131,11 +131,11 @@ def run_analysis(
     explain_results : bool, optional
         Whether to generate a natural-language explanation of the
         differential expression results using
-        ``omicforge.ai_explanation.methods.explain_de_results``. Requires
+        ``deconcord.ai_explanation.methods.explain_de_results``. Requires
         an ``ANTHROPIC_API_KEY`` to be set. Default False.
     live_enrichment_organism : str, optional
         If given, also runs pathway enrichment against the live g:Profiler
-        API (``omicforge.pathway_analysis.live_enrichment.run_gprofiler_enrichment``)
+        API (``deconcord.pathway_analysis.live_enrichment.run_gprofiler_enrichment``)
         on the significant genes, using this as the g:Profiler organism
         code (e.g. ``"hsapiens"``). This is independent of ``gene_sets``/
         ``background_genes`` — both can be used together, or either alone.
@@ -233,7 +233,7 @@ def run_analysis(
         # is the one function in the package that makes a live network
         # call, so nothing pays for that possibility unless it's actually
         # requested.
-        from omicforge.pathway_analysis.live_enrichment import run_gprofiler_enrichment
+        from deconcord.pathway_analysis.live_enrichment import run_gprofiler_enrichment
 
         significant_genes = set(de_results.index[de_results["significant"]])
         results["live_pathway_enrichment"] = run_gprofiler_enrichment(
@@ -248,7 +248,7 @@ def run_analysis(
     if explain_results:
         # Imported lazily: this pulls in the anthropic SDK / python-dotenv,
         # which shouldn't be required unless AI explanations are requested.
-        from omicforge.ai_explanation.methods import explain_de_results
+        from deconcord.ai_explanation.methods import explain_de_results
 
         results["explanation"] = explain_de_results(de_results)
 

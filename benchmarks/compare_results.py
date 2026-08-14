@@ -1,5 +1,5 @@
 """
-Compare OmicForge's differential expression output against DESeq2 and
+Compare DEConcord's differential expression output against DESeq2 and
 edgeR on the same input.
 
 Supports two datasets (see DATASETS below): `airway` (human, the original
@@ -10,10 +10,10 @@ of that one dataset). Run the matching R script first
 (`run_deseq2_edger.R` or `run_deseq2_edger_pasilla.R`) -- this script reads
 what that produces (benchmarks/data/<dataset>_counts.csv,
 benchmarks/data/<dataset>_metadata.csv, and each tool's results CSV) and
-runs OmicForge on the identical count matrix and groups, then reports
+runs DEConcord on the identical count matrix and groups, then reports
 where the three agree and disagree.
 
-This is not trying to make OmicForge look good -- it's trying to find out
+This is not trying to make DEConcord look good -- it's trying to find out
 where a simple Welch's-t-test-on-log2-CPM approach actually diverges from
 count-based negative-binomial modeling, and by how much. Both kinds of
 result are worth knowing.
@@ -37,7 +37,7 @@ import pandas as pd
 from scipy.stats import pearsonr, spearmanr
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from omicforge.pipeline import run_analysis
+from deconcord.pipeline import run_analysis
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
@@ -86,9 +86,9 @@ def load_inputs(dataset: str):
     return counts, meta, deseq2, edger
 
 
-def run_omicforge(counts: pd.DataFrame, meta: pd.DataFrame, dataset: str, method: str = "welch") -> pd.DataFrame:
+def run_deconcord(counts: pd.DataFrame, meta: pd.DataFrame, dataset: str, method: str = "welch") -> pd.DataFrame:
     cfg = DATASETS[dataset]
-    # OmicForge's log_fold_change is mean(group_1) - mean(group_2), so
+    # DEConcord's log_fold_change is mean(group_1) - mean(group_2), so
     # group_1 has to be the treated samples to match each tool's own
     # "treated vs untreated"-direction contrast. Get this backwards and
     # every correlation below comes out negative for no statistical reason
@@ -106,14 +106,14 @@ def run_omicforge(counts: pd.DataFrame, meta: pd.DataFrame, dataset: str, method
         generate_plots=False,
     )
     de = results["differential_expression"]
-    print(f"OmicForge ({method}): {len(de)} genes tested (post min-count filtering), "
+    print(f"DEConcord ({method}): {len(de)} genes tested (post min-count filtering), "
           f"{int(de['significant'].sum())} significant (adjusted p < 0.05, |log2FC| > 1)")
     return de
 
 
-def compare(omicforge: pd.DataFrame, other: pd.DataFrame, other_name: str,
+def compare(deconcord: pd.DataFrame, other: pd.DataFrame, other_name: str,
             other_lfc_col: str, other_padj_col: str, file_suffix: str = ""):
-    merged = omicforge.join(other, how="inner", rsuffix=f"_{other_name}")
+    merged = deconcord.join(other, how="inner", rsuffix=f"_{other_name}")
     merged = merged.dropna(subset=["log_fold_change", other_lfc_col])
 
     pearson_r, _ = pearsonr(merged["log_fold_change"], merged[other_lfc_col])
@@ -128,11 +128,11 @@ def compare(omicforge: pd.DataFrame, other: pd.DataFrame, other_name: str,
     recall = len(intersection) / len(other_sig) if other_sig else float("nan")
 
     summary = {
-        "comparison": f"OmicForge vs {other_name}",
+        "comparison": f"DEConcord vs {other_name}",
         "genes_in_common": len(merged),
         "pearson_r_lfc": round(pearson_r, 3),
         "spearman_r_lfc": round(spearman_r, 3),
-        "omicforge_significant": len(bi_sig),
+        "deconcord_significant": len(bi_sig),
         "other_significant": len(other_sig),
         "significant_in_both": len(intersection),
         "jaccard_index": round(jaccard, 3),
@@ -150,8 +150,8 @@ def compare(omicforge: pd.DataFrame, other: pd.DataFrame, other_name: str,
     lims = [min(ax.get_xlim()[0], ax.get_ylim()[0]), max(ax.get_xlim()[1], ax.get_ylim()[1])]
     ax.plot(lims, lims, color="black", linestyle="--", linewidth=1, label="y = x")
     ax.set_xlabel(f"{other_name} log2 fold change")
-    ax.set_ylabel("OmicForge log fold change")
-    ax.set_title(f"OmicForge vs {other_name} (Pearson r = {pearson_r:.3f})")
+    ax.set_ylabel("DEConcord log fold change")
+    ax.set_title(f"DEConcord vs {other_name} (Pearson r = {pearson_r:.3f})")
     ax.legend()
     fig.tight_layout()
     fig.savefig(RESULTS_DIR / f"lfc_vs_{other_name.lower()}{file_suffix}.png", dpi=150)
@@ -171,7 +171,7 @@ def parse_args():
     )
     parser.add_argument(
         "--method", choices=["welch", "moderated"], default="welch",
-        help="Which OmicForge DE method to benchmark. Default 'welch' -- matches the "
+        help="Which DEConcord DE method to benchmark. Default 'welch' -- matches the "
              "original run and its committed output filenames. 'moderated' writes to "
              "suffixed filenames (e.g. lfc_vs_deseq2_moderated.png) so it doesn't "
              "overwrite the welch results.",
@@ -187,10 +187,10 @@ def main():
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     counts, meta, deseq2, edger = load_inputs(args.dataset)
-    omicforge = run_omicforge(counts, meta, args.dataset, method=args.method)
+    deconcord = run_deconcord(counts, meta, args.dataset, method=args.method)
 
-    deseq2_summary = compare(omicforge, deseq2, "DESeq2", "log2FoldChange", "padj", file_suffix)
-    edger_summary = compare(omicforge, edger, "edgeR", "logFC", "FDR", file_suffix)
+    deseq2_summary = compare(deconcord, deseq2, "DESeq2", "log2FoldChange", "padj", file_suffix)
+    edger_summary = compare(deconcord, edger, "edgeR", "logFC", "FDR", file_suffix)
 
     summary_df = pd.DataFrame([deseq2_summary, edger_summary])
     print()
@@ -198,7 +198,7 @@ def main():
 
     md_path = RESULTS_DIR / f"comparison_summary{file_suffix}.md"
     with open(md_path, "w") as f:
-        f.write(f"# OmicForge ({args.method}) vs DESeq2 / edgeR — {args.dataset} dataset\n\n")
+        f.write(f"# DEConcord ({args.method}) vs DESeq2 / edgeR — {args.dataset} dataset\n\n")
         f.write("Real numbers from a real run. See `benchmarks/README.md` for methodology "
                 "and honest caveats before reading anything into these on their own.\n\n")
         # Plain code block instead of a real markdown table -- avoids pulling

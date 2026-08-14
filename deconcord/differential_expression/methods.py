@@ -10,12 +10,12 @@ performs no normalization of its own.
 Practical implications:
 - ``df`` is expected to already be normalized and log-transformed (e.g.
   ``compute_cpm`` followed by ``log2_transform`` from
-  ``omicforge.normalization.methods``) before being passed in here. Feed
+  ``deconcord.normalization.methods``) before being passed in here. Feed
   it raw counts and "log fold change" becomes a difference of raw count
   means — a real number, but not a fold change of anything.
 - Treat this module's output as a fast, exploratory first look. For
   results meant to support a real biological conclusion, use DESeq2 or
-  edgeR, which OmicForge does not replace.
+  edgeR, which DEConcord does not replace.
 """
 
 import numpy as np
@@ -185,7 +185,7 @@ def _fit_ebayes_prior(sample_variances: pd.Series, df_resid: int) -> tuple[float
     alone. Simplified relative to limma's actual ``fitFDist``: this uses a
     direct method-of-moments solve rather than an iterative MLE, and
     assumes every gene shares the same residual degrees of freedom (true
-    for OmicForge's fixed two-group design).
+    for DEConcord's fixed two-group design).
 
     Parameters
     ----------
@@ -585,7 +585,7 @@ def run_differential_expression(
 
     Not a substitute for DESeq2/edgeR — see the module docstring. ``df``
     should already be normalized and log-transformed (e.g. log2-CPM via
-    ``omicforge.normalization.methods``).
+    ``deconcord.normalization.methods``).
 
     Parameters
     ----------

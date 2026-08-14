@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 .env
 /test_*.png
+/deconcord_output/
 /omicforge_output/
 /bioinsight_output/
 /benchmarks/data/

@@ -1,6 +1,6 @@
-# Benchmarking OmicForge against DESeq2 and edgeR
+# Benchmarking DEConcord against DESeq2 and edgeR
 
-OmicForge's own README has said this from the start: its differential
+DEConcord's own README has said this from the start: its differential
 expression step is a simple, exploratory mean-difference t-test on
 normalized log2 CPM values, not count-based negative-binomial modeling
 like DESeq2 or edgeR. That's a design choice, not an oversight — but a
@@ -16,7 +16,7 @@ against the tools it's naming. This directory is that check.
 8 human airway smooth muscle RNA-seq samples, 4 cell lines, each with an
 untreated and a dexamethasone-treated sample. It's the dataset DESeq2's
 own vignette uses as its worked example — a standard, well-understood
-choice, not one picked because it happens to flatter OmicForge.
+choice, not one picked because it happens to flatter DEConcord.
 
 **`pasilla`** (the second, independent benchmark) —
 [Bioconductor](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html)
@@ -50,22 +50,22 @@ Each R script writes its raw count matrix and sample metadata to
 `benchmarks/data/`, runs DESeq2 and edgeR with each package's own
 standard workflow (default settings, `filterByExpr` for edgeR, no
 tuning toward any particular outcome), and writes their results to
-`benchmarks/results/`. `compare_results.py` then runs OmicForge
+`benchmarks/results/`. `compare_results.py` then runs DEConcord
 (`run_analysis`, `min_count=10, min_samples=4`) on the exact same
 count matrix and the exact same two groups, and reports:
 
 - Pearson and Spearman correlation of log fold change, per gene, against
   each tool
-- overlap of "significant" gene calls (OmicForge's default
+- overlap of "significant" gene calls (DEConcord's default
   `adjusted_p_value < 0.05` and `|log_fold_change| > 1` vs. each tool's
   `padj`/`FDR < 0.05`) as a Jaccard index, precision, and recall
-- a scatter plot of OmicForge's log fold change against each tool's,
+- a scatter plot of DEConcord's log fold change against each tool's,
   saved as `benchmarks/results/lfc_vs_deseq2.png` and `lfc_vs_edger.png`
   (or `..._pasilla.png` for the second dataset)
 
 `--dataset` selects which benchmark dataset to run (`airway`, the
-default, or `pasilla`); `--method` selects which of OmicForge's two DE
-methods to benchmark: `welch` (default) or `moderated` (OmicForge's
+default, or `pasilla`); `--method` selects which of DEConcord's two DE
+methods to benchmark: `welch` (default) or `moderated` (DEConcord's
 empirical-Bayes variance-shrinkage option). Both dataset and method are
 independent axes — `airway`/`pasilla` × `welch`/`moderated` all write to
 distinct, non-overwriting filenames (`airway` + `welch` keeps the
@@ -94,7 +94,7 @@ all for the lowest-count genes, which is exactly where shrinkage does
 the most work.
 
 **Significance-call overlap is the harder, more informative number, and
-it isn't expected to be 1.0.** OmicForge tests per-gene variance with a
+it isn't expected to be 1.0.** DEConcord tests per-gene variance with a
 t-test on normalized values; DESeq2 and edgeR model the mean-variance
 relationship across *all* genes at once and borrow statistical strength
 across genes with similar expression levels. That's a real, substantive
@@ -104,15 +104,46 @@ and not to a tool that's borrowed information from thousands of other
 genes to get a better dispersion estimate. Disagreement here is data,
 not failure.
 
-**This doesn't "validate" OmicForge and isn't meant to.** It measures
+**This doesn't "validate" DEConcord and isn't meant to.** It measures
 the actual size of the gap between a simple exploratory method and the
 field's standard tools, on the real datasets checked so far. If the gap
 turns out to be small for genes with clear, large effects and large for
 marginal ones, that's a specific, useful, falsifiable claim to make about
-when OmicForge's numbers are trustworthy — a much stronger statement than
+when DEConcord's numbers are trustworthy — a much stronger statement than
 "it works on toy data," which is all that could honestly be said before
 this existed. Two datasets is a real check, not a large one; the
 [README](../README.md#limitations) says so directly.
 
 Whatever the actual numbers come out to be, they get written up as-run
 in `DEVLOG.md` — including if they're unflattering.
+
+## Method concordance: DESeq2 vs edgeR
+
+`compare_results.py` above answers "how close is DEConcord's simple
+t-test to the field's standard tools" — a question about DEConcord.
+`method_concordance.py` answers DEConcord's actual core question instead:
+how much do DESeq2 and edgeR — two established, independently developed
+tools — agree with *each other* on the same count matrix? It runs no DE
+method itself; it just loads the same `*_deseq2_results.csv`/
+`*_edger_results.csv` the R scripts above already produced and hands them
+to `deconcord.concordance.methods.compute_de_concordance`, the same
+library function anyone using DEConcord on their own two result tables
+would call.
+
+```
+python benchmarks/method_concordance.py
+python benchmarks/method_concordance.py --dataset pasilla
+```
+
+Writes `benchmarks/results/method_concordance.md` (`..._pasilla.md` for
+the second dataset). On both datasets checked so far, DESeq2 and edgeR
+agree strongly: Jaccard index ~0.76–0.78 on significant-gene overlap,
+log fold change Pearson r > 0.998, and 100% directional agreement (zero
+discordant genes) among genes both tools call significant — the
+disagreement that exists is almost entirely about which *marginal* genes
+clear each tool's own significance threshold (mostly genes DESeq2 calls
+significant that edgeR doesn't), not about direction or magnitude for the
+genes both agree are real. That's a real finding, not a given — it's
+also exactly the kind of number this project exists to check across a lot
+more conditions than just "DESeq2 vs edgeR, default settings, two
+datasets."

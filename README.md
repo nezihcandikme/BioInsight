@@ -1,8 +1,8 @@
-# OmicForge
+# DEConcord
 
-A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.11.0.
+Differential Expression **Concord**ance. A small Python tool for a specific question: when you run an RNA-seq differential expression analysis, which conclusions survive a reasonable change in method, threshold, or resampling — and which ones quietly depend on which tool you happened to pick? v0.12.0.
 
-Not a replacement for DESeq2 or edgeR — checked against both (see [Validation](#validation)), explicit about where it falls short.
+Not a DESeq2/edgeR replacement, and not trying to be. DEConcord doesn't run its own differential expression as its main job — it takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
 
 ## Quick start
 
@@ -12,59 +12,81 @@ cd BioInsight
 pip install -e .
 ```
 
-CLI, on a raw count matrix (genes as rows, samples as columns):
-
-```bash
-omicforge counts.csv \
-  --group1 control_1,control_2,control_3 \
-  --group2 treated_1,treated_2,treated_3 \
-  --min-count 10
-```
-
-Writes `differential_expression.csv`, `qc.csv`, a volcano plot, and a PCA plot to `omicforge_output/`.
-
-As a library, for the intermediate objects instead of files:
+Compare two DE result tables — here, real DESeq2 and edgeR output on the same count matrix:
 
 ```python
-from omicforge.pipeline import run_analysis
+import pandas as pd
+from deconcord.concordance.methods import compute_de_concordance
 
-results = run_analysis(
-    "counts.csv",
-    group_1=["control_1", "control_2", "control_3"],
-    group_2=["treated_1", "treated_2", "treated_3"],
-    min_count=10,
+deseq2 = pd.read_csv("deseq2_results.csv", index_col="gene_id")
+edger = pd.read_csv("edger_results.csv", index_col="gene_id")
+
+result = compute_de_concordance(
+    deseq2, edger, name_a="DESeq2", name_b="edgeR",
+    lfc_col_a="log2FoldChange", pvalue_col_a="padj",
+    lfc_col_b="logFC", pvalue_col_b="FDR",
 )
 
-de = results["differential_expression"]  # log fold change, p-values, significance
+result["summary"]["jaccard_index"]          # significant-gene set overlap
+result["summary"]["directional_agreement"]  # among genes sig. in both, % same direction
+result["discordant_genes"]                  # significant in both, but disagree on direction
 ```
 
-Every stage (`validate_counts`, `run_sample_qc`, `compute_cpm`, `run_differential_expression`, ...) is also importable on its own.
+The underlying pipeline (validation → QC → normalization → DE → enrichment) is still there and still real — `deconcord counts.csv --group1 ... --group2 ...` on the CLI, or `deconcord.pipeline.run_analysis` as a library call — see [What it does](#what-it-does) below.
 
 ## Why
 
-I'm a high-school student learning statistics and computational biology by building something slightly beyond what I already know. I wanted to understand the actual mechanics between "here's a count matrix" and "these genes changed" — what makes a count matrix valid, why normalization matters, why testing thousands of genes at once needs correction, why significance isn't the same as biological importance.
+I'm a high-school student learning statistics and computational biology. This project started as a general bulk RNA-seq pipeline (validation, QC, normalization, a from-scratch differential expression implementation) — useful for learning the mechanics, but a narrower question turned out to be more interesting and more honest about what a small project can actually contribute: not "can I build another DE tool" (mature platforms like [OmicVerse](https://github.com/Starlitnightly/omicverse) already do that, with a published paper and years of development behind them), but "how much do the conclusions from *existing* tools actually hold up when you stress-test them." That question doesn't require out-building anything — it requires being careful.
 
-The code running is step one. The numbers meaning what I think they mean is the actual objective. The dated account of what changed, why, and what didn't work is in [`DEVLOG.md`](DEVLOG.md).
+The code running is step one. The numbers meaning what I think they mean is the actual objective. The dated account of what changed, why, and what didn't work — including the reasoning behind this rename — is in [`DEVLOG.md`](DEVLOG.md).
 
 ## What it does
 
+The intended workflow, once every stage exists:
+
 ```
-load → validate → QC → normalize → (filter) → differential expression → (annotate) → (enrich) → plot
+DE result tables (DESeq2, edgeR, ...)
+        ↓
+method concordance          ← built (compute_de_concordance)
+        ↓
+threshold sensitivity       ← not built yet
+        ↓
+pathway enrichment + pathway stability   ← enrichment exists as infrastructure; stability not built yet
+        ↓
+resampling / stability analysis          ← not built yet
+        ↓
+robustness assessment                    ← not built yet
+        ↓
+interpretable report                     ← not built yet
 ```
 
-- **Validation**: non-negative integer counts, no duplicate IDs, no missing values, a transposed-matrix heuristic — specific error messages, checked first.
-- **Sample QC**: library size, genes detected, MAD-based outlier flags.
-- **Normalization**: CPM + log2 scale, with optional low-count gene filtering first.
-- **Differential expression**: Welch's t-test per gene (default), or an opt-in empirical-Bayes moderated t-test that borrows variance across genes (`method="moderated"`). Benjamini-Hochberg correction either way. If a batch, sex, or other covariate is a real confound, `covariate_cols` switches to a per-gene linear model that adjusts for it instead.
-- **Gene annotation** (optional): attach symbols from a local `gene_id,gene_symbol` CSV. No live API; unmapped genes get `NaN`, not a guess.
-- **Pathway enrichment** (optional): local hypergeometric test against a GMT file and an explicit background, or a live g:Profiler query (GO/KEGG/Reactome/WikiPathways) if you have internet access.
-- **GEO acquisition** (optional): list/download a GEO series' supplementary files and parse its sample metadata from a `GSE` accession.
-- **Plots**: volcano, PCA, and an enrichment dot plot (significance vs. gene overlap) when enrichment was run — all from the actual result objects.
-- **Plain-language summary** (optional, off by default): an LLM narrates a result table — doesn't verify anything, isn't the point of this project. Requires `ANTHROPIC_API_KEY`.
+**Built today**: `deconcord.concordance.methods.compute_de_concordance` — given two DE result tables for the same comparison, computes the overlap and Jaccard index of their significant-gene calls, Pearson/Spearman correlation of log fold change across every gene both tables tested, directional agreement (among genes significant in both, the fraction that agree on the sign of the effect), and explicit concordant/discordant/method-specific gene lists. See `benchmarks/method_concordance.py` for a real run against real DESeq2/edgeR output.
+
+**Everything else is infrastructure, not the identity.** It's what's left of the original bulk RNA-seq pipeline — kept because it's useful (it's how the `benchmarks/` DE result tables get generated in the first place, and it's a future source of a third method to check for concordance), not because DEConcord is trying to be a general-purpose RNA-seq toolkit:
+
+- **Validation, QC, normalization**: count matrix checks, library size/outlier detection, CPM + log2 scaling.
+- **Differential expression**: Welch's t-test, an empirical-Bayes moderated t-test, or a covariate-adjusted linear model — DEConcord's own from-scratch DE implementation, useful as one more method to check for concordance against DESeq2/edgeR, not as a competing product.
+- **Gene annotation, pathway enrichment (local + live g:Profiler), GEO acquisition, plots** (volcano, PCA, enrichment dot plot) — unchanged from before, all still real and tested. See `deconcord.pipeline.run_analysis` for the full pipeline these support.
+- **Optional AI summary**: narrates a result table, doesn't verify it, off by default.
+
+## What DEConcord does not build
+
+Depth over breadth, on purpose. Not going toward single-cell analysis, spatial transcriptomics, proteomics, metabolomics, molecular docking or dynamics, protein structure prediction, general-purpose ML tooling, or integrations added just because other omics packages have them.
+
+If a proposed feature doesn't help answer "how robust is this differential expression conclusion," it probably doesn't belong here.
 
 ## Validation
 
-Checked against real DESeq2 and real edgeR (own default settings) on two independent public datasets: [`airway`](https://bioconductor.org/packages/release/data/experiment/html/airway.html) (human) and [`pasilla`](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html) (*Drosophila*) — different organisms, labs, and designs. Methodology, caveats, and reproduction scripts: [`benchmarks/`](benchmarks/).
+**DESeq2 vs edgeR concordance** (the actual new core question), on the two real datasets checked so far — [`airway`](https://bioconductor.org/packages/release/data/experiment/html/airway.html) (human) and [`pasilla`](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html) (*Drosophila*), each tool run with its own default settings:
+
+| dataset | genes compared | Jaccard (sig. overlap) | log2FC Pearson r | directional agreement | discordant genes |
+|---|---:|---:|---:|---:|---:|
+| airway | 15,896 | 0.758 | 0.9995 | 1.000 | 0 |
+| pasilla | 7,919 | 0.785 | 0.9988 | 1.000 | 0 |
+
+Two established tools, run independently, agree strongly — high correlation, zero genes where both call significance but disagree on direction. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes both agree are real. A real finding on two datasets, not a general law about DESeq2 vs edgeR — see `benchmarks/method_concordance.py` and `benchmarks/README.md` for the full methodology.
+
+**DEConcord's own DE methods vs DESeq2/edgeR** (a check on the infrastructure, not the project's main claim anymore):
 
 | dataset | method | precision (DESeq2 / edgeR) | recall (DESeq2 / edgeR) | log2FC Pearson r (DESeq2 / edgeR) |
 |---|---|---:|---:|---:|
@@ -73,23 +95,26 @@ Checked against real DESeq2 and real edgeR (own default settings) on two indepen
 | pasilla | welch | 1.0 / 1.0 | 0.085 / 0.104 | 0.974 / 0.975 |
 | pasilla | moderated | 1.0 / 1.0 | 0.174 / 0.215 | 0.974 / 0.975 |
 
-Precision: of the genes OmicForge calls significant, the fraction DESeq2/edgeR also call significant. Recall: the reverse. No false-positive calls relative to the reference DESeq2/edgeR calls were observed in these two benchmarks — not the same claim as a universal zero false-positive rate, and two datasets don't establish one. Welch's t-test tests each gene in isolation and finds a fraction of what DESeq2/edgeR find, since those tools borrow statistical power across genes with similar expression and a plain per-gene test doesn't. The moderated method closes some of that gap the same way, roughly doubling recall at the same precision — a different variance assumption, not a strictly better default.
+Precision: of the genes DEConcord's own method calls significant, the fraction DESeq2/edgeR also call significant. Recall: the reverse. No false-positive calls relative to the reference DESeq2/edgeR calls were observed in these benchmarks — not the same claim as a universal zero false-positive rate.
 
 ## Limitations
 
-- Bulk RNA-seq count matrices only. No single-cell, no other omics types, despite the name's broader ambition.
-- Default DE method (Welch's t-test) has measurably lower recall than DESeq2/edgeR on every dataset checked so far — see the table above. Expected and explained, not a bug, but real effects get missed.
-- Two benchmark datasets is a real check, not a large one. Other tissues, organisms, or designs (unbalanced groups, batch effects, more than two conditions) haven't been measured.
-- Still a two-level condition comparison (group_1 vs group_2) either way. `covariate_cols` adjusts for additional variables measured on the same samples, but doesn't support paired/repeated-measures samples or a condition with more than two levels.
-- The covariate-adjusted model has no Welch's-test option (a linear model needs a shared per-gene variance assumption to test a coefficient) and no built-in check for whether a covariate is even worth including — that judgment is left to the caller.
-- Local pathway enrichment has no gene-set-size or overlap correction beyond Benjamini-Hochberg; only as good as the background you give it.
-- The LLM layer narrates numbers, doesn't verify them — a summary, not an additional check.
+- Method concordance today is pairwise and one fixed threshold at a time (default `alpha=0.05`). Threshold sensitivity (does a conclusion survive `alpha=0.01` vs `alpha=0.1`?) isn't built yet.
+- No pathway-stability or resampling/bootstrap analysis yet — both are on the roadmap, not implemented.
+- Robustness/concordance metrics so far are standard, well-understood ones (Jaccard, Pearson/Spearman correlation, directional agreement). No new statistical method has been invented, deliberately — see the roadmap.
+- Concordance findings so far come from two datasets (`airway`, `pasilla`), both standard two-group designs. Whether DESeq2/edgeR concordance holds up on unbalanced groups, batch effects, or more complex designs hasn't been checked.
+- The underlying DE infrastructure (validation, QC, DE, enrichment) still only supports two-group condition comparisons (with optional covariate adjustment) — no paired samples or more than two condition levels.
 
 ## Roadmap
 
-**Near term**: strengthen bulk RNA-seq validation, more benchmark datasets, paired-sample and multi-level-condition designs, better enrichment reporting.
+Six areas, in the order a real analysis would move through them. Building depth-first, top to bottom — not skipping ahead.
 
-**Later**: additional transcriptomic workflows; broader omics support where scientifically justified, not by default.
+1. **Method concordance** (DESeq2 vs edgeR — overlap, Jaccard, directional and effect-size agreement, concordant/discordant genes). *Built.*
+2. **Threshold sensitivity**: which findings disappear under small, reasonable changes to the FDR or log2FC cutoff.
+3. **Pathway stability**: whether an enriched pathway stays enriched across methods and settings, or is itself method-sensitive.
+4. **Resampling stability**: bootstrap/subsampling/leave-one-out — how consistently a gene or pathway reappears.
+5. **Robustness/concordance metrics**: once 1–4 exist, whether a scientifically defensible summary statistic of "how robust is this conclusion" makes sense — not invented ahead of the infrastructure that would justify it.
+6. **Interpretation and reporting**: figures/tables that explain uncertainty, not just dump numbers.
 
 ## Development
 

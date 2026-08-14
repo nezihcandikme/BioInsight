@@ -4,7 +4,7 @@ Live pathway enrichment via the g:Profiler g:GOSt API.
 This is deliberately separate from ``gmt.py``/``methods.py``: those work
 entirely from a local gene-set file and a local hypergeometric test, no
 network required — the same "no live external service" design
-``omicforge.annotation`` uses, for the same reason (this project is built
+``deconcord.annotation`` uses, for the same reason (this project is built
 and tested in a sandbox with no general internet access). This module is
 the one place in pathway analysis that breaks that pattern on purpose,
 because g:Profiler's curated, versioned pathway databases (GO, KEGG,

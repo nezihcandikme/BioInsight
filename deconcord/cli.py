@@ -1,7 +1,7 @@
 """
-Command-line entry point for OmicForge.
+Command-line entry point for DEConcord.
 
-This wraps ``omicforge.pipeline.run_analysis`` so the pipeline can be run
+This wraps ``deconcord.pipeline.run_analysis`` so the pipeline can be run
 without writing a Python script: point it at a count matrix CSV, name your
 two groups, and it writes the differential expression table (and, if asked,
 plots and a pathway enrichment table) to an output directory.
@@ -22,9 +22,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from omicforge.io.counts import CountMatrixError
-from omicforge.pathway_analysis.gmt import load_gmt
-from omicforge.pipeline import run_analysis
+from deconcord.io.counts import CountMatrixError
+from deconcord.pathway_analysis.gmt import load_gmt
+from deconcord.pipeline import run_analysis
 
 
 def _parse_sample_list(raw: str) -> list[str]:
@@ -36,8 +36,8 @@ def _parse_sample_list(raw: str) -> list[str]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="omicforge",
-        description="Run the OmicForge RNA-seq pipeline on a count matrix CSV.",
+        prog="deconcord",
+        description="Run the DEConcord RNA-seq pipeline on a count matrix CSV.",
     )
     parser.add_argument("counts", help="Path to a count matrix CSV (genes as rows, samples as columns).")
     parser.add_argument("--group1", required=True, help="Comma-separated sample names for the first comparison group.")
@@ -89,7 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--no-plots", action="store_true", help="Skip generating the volcano and PCA plots.")
     parser.add_argument("--explain", action="store_true", help="Generate a plain-language explanation of the results (requires ANTHROPIC_API_KEY).")
-    parser.add_argument("--out", default="omicforge_output", help="Output directory. Default 'omicforge_output'.")
+    parser.add_argument("--out", default="deconcord_output", help="Output directory. Default 'deconcord_output'.")
     return parser
 
 
@@ -184,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _run(argv)
     except (CountMatrixError, ValueError, FileNotFoundError, ConnectionError, RuntimeError) as exc:
-        print(f"omicforge: {exc}", file=sys.stderr)
+        print(f"deconcord: {exc}", file=sys.stderr)
         return 1
 
 

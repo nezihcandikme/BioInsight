@@ -1,7 +1,7 @@
 import pytest
 
-from omicforge.pathway_analysis.gmt import load_gmt
-from omicforge.pathway_analysis.methods import run_pathway_enrichment_analysis
+from deconcord.pathway_analysis.gmt import load_gmt
+from deconcord.pathway_analysis.methods import run_pathway_enrichment_analysis
 
 
 def test_load_gmt_parses_gene_sets():
