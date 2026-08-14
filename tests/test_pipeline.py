@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import patch
 
 import pandas as pd
@@ -342,6 +343,22 @@ def test_run_analysis_without_covariate_cols_ignores_metadata_and_uses_method():
     pd.testing.assert_frame_equal(
         with_metadata["differential_expression"], without_metadata["differential_expression"],
     )
+
+
+def test_run_analysis_explain_results_without_ai_extra_gives_actionable_error():
+    # explain_results=True lazily imports deconcord.ai_explanation.methods,
+    # which itself imports the optional 'anthropic'/'python-dotenv' extra.
+    # Without that extra installed, the raw ModuleNotFoundError is
+    # unhelpful ("No module named 'anthropic'") -- run_analysis should
+    # wrap it with the actual fix (pip install deconcord[ai]).
+    df = _toy_counts()
+
+    with patch.dict(sys.modules, {"anthropic": None, "dotenv": None, "deconcord.ai_explanation.methods": None}):
+        with pytest.raises(ImportError, match=r"pip install deconcord\[ai\]"):
+            run_analysis(
+                df, group_1=["sample1", "sample2"], group_2=["sample3", "sample4"],
+                generate_plots=False, explain_results=True,
+            )
 
 
 def test_run_analysis_empty_live_enrichment_skips_plot():

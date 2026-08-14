@@ -1,13 +1,42 @@
+# Environments
 .venv/
+.venv*/
+venv/
+env/
+
+# Python build/cache artifacts
 __pycache__/
 *.pyc
-.pytest_cache/
-.DS_Store
+*.pyo
 *.egg-info/
+build/
+dist/
+*.egg
+
+# Test/lint caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE junk
+.vscode/
+.idea/
+*.swp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Credentials -- never commit these
 .env
+*.env.local
+
+# Generated analysis output
 /test_*.png
 /deconcord_output/
 /omicforge_output/
 /bioinsight_output/
 /benchmarks/data/
 /benchmarks/results/*_results.csv
+/examples/output/

@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: >-
+  If you use DEConcord, please cite it using the metadata below.
+  This is software-only citation metadata -- there is no associated
+  peer-reviewed publication at this time.
+type: software
+title: "DEConcord: robustness and concordance analysis for RNA-seq differential expression"
+authors:
+  - given-names: Nezih Can
+    family-names: Dikme
+    email: nezihcandikme@gmail.com
+repository-code: "https://github.com/nezihcandikme/BioInsight"
+url: "https://github.com/nezihcandikme/BioInsight"
+license: MIT
+version: 0.13.0
+date-released: "2026-08-14"
+keywords:
+  - rna-seq
+  - bioinformatics
+  - differential-expression
+  - transcriptomics
+  - reproducibility
+  - computational-biology

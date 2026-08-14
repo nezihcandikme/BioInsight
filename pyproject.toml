@@ -4,9 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deconcord"
-version = "0.12.0"
-description = "DEConcord: robustness/concordance analysis for RNA-seq differential expression -- given DE result tables from DESeq2, edgeR, or any other tool, computes method concordance (significant-gene overlap, directional and effect-size agreement, concordant/discordant genes). Also ships the RNA-seq pipeline (validation, QC, normalization, exploratory/covariate-adjusted DE, annotation, pathway enrichment, visualization) that generates the DE tables it compares."
+version = "0.13.0"
+description = "Robustness and concordance analysis for RNA-seq differential expression -- given DE result tables from DESeq2, edgeR, or any other tool, computes method concordance (significant-gene overlap, directional and effect-size agreement, concordant/discordant genes). Also ships the RNA-seq pipeline (validation, QC, normalization, exploratory/covariate-adjusted DE, annotation, pathway enrichment, visualization) that generates the DE tables it compares."
+readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Nezih Can Dikme", email = "nezihcandikme@gmail.com" },
+]
+keywords = [
+    "rna-seq",
+    "bioinformatics",
+    "differential-expression",
+    "transcriptomics",
+    "reproducibility",
+    "computational-biology",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "pandas",
     "numpy",
@@ -14,16 +37,36 @@ dependencies = [
     "statsmodels",
     "matplotlib",
     "scikit-learn",
-    "anthropic",
-    "python-dotenv"
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+# The plain-language AI summary (deconcord.ai_explanation) is the one
+# optional, off-by-default feature that needs these -- everything else
+# (validation, QC, DE, concordance, enrichment, plotting) only needs the
+# core dependencies above.
+ai = ["anthropic", "python-dotenv"]
+dev = ["pytest", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/nezihcandikme/BioInsight"
+Repository = "https://github.com/nezihcandikme/BioInsight"
+Changelog = "https://github.com/nezihcandikme/BioInsight/blob/main/CHANGELOG.md"
+Issues = "https://github.com/nezihcandikme/BioInsight/issues"
 
 [project.scripts]
 deconcord = "deconcord.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["deconcord*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+# Scoped to actual correctness issues (syntax errors, pyflakes-equivalent
+# checks, and Python-version-compatibility of type hint syntax) rather
+# than opinionated style rules like import sorting -- CI failing on a
+# formatting preference isn't worth the noise for a project this size.
+select = ["E9", "F", "FA"]

@@ -1,8 +1,16 @@
 # DEConcord
 
-Differential Expression **Concord**ance. A small Python tool for a specific question: when you run an RNA-seq differential expression analysis, which conclusions survive a reasonable change in method, threshold, or resampling — and which ones quietly depend on which tool you happened to pick? v0.12.0.
+[![Tests](https://github.com/nezihcandikme/BioInsight/actions/workflows/tests.yml/badge.svg)](https://github.com/nezihcandikme/BioInsight/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+Robustness and concordance analysis for RNA-seq differential expression.
+
+Most RNA-seq workflows report the significant genes or pathways from one particular analysis configuration. DEConcord asks whether those conclusions remain stable when reasonable analytical decisions change — a different DE tool, a different significance threshold, a different resampling of the same data.
 
 Not a DESeq2/edgeR replacement, and not trying to be. DEConcord doesn't run its own differential expression as its main job — it takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
+
+**Status**: early, pre-1.0 (v0.13.0), under active development. The core method-concordance question is implemented and checked against real data (see [Validation](#validation)); threshold sensitivity, pathway stability, and resampling stability are on the [roadmap](#roadmap), not yet built.
 
 ## Quick start
 
@@ -32,7 +40,22 @@ result["summary"]["directional_agreement"]  # among genes sig. in both, % same d
 result["discordant_genes"]                  # significant in both, but disagree on direction
 ```
 
-The underlying pipeline (validation → QC → normalization → DE → enrichment) is still there and still real — `deconcord counts.csv --group1 ... --group2 ...` on the CLI, or `deconcord.pipeline.run_analysis` as a library call — see [What it does](#what-it-does) below.
+The underlying pipeline (validation → QC → normalization → DE → enrichment) is still there and still real — `deconcord counts.csv --group1 ... --group2 ...` on the CLI, or `deconcord.pipeline.run_analysis` as a library call. Supported input: a CSV count matrix, genes as rows and samples as columns, non-negative integer values — the CLI and `run_analysis` both validate this up front and name the specific problem if it isn't (wrong orientation, duplicate gene IDs, missing values) rather than failing deep inside a later step.
+
+A CLI run writes:
+
+```
+deconcord_output/
+├── tables/differential_expression.csv, qc.csv, ...
+├── figures/volcano.png, pca.png, ...
+└── run_metadata.json   # version, parameters, timestamp -- for reproducing the run
+```
+
+<img src="docs/assets/volcano-demo.png" alt="Volcano plot from a real DEConcord CLI run: log fold change on the x-axis, -log10 adjusted p-value on the y-axis, significant genes highlighted." width="500" />
+
+*Volcano plot from an actual `deconcord` CLI run on a synthetic dataset — every point is a gene that was really tested, not a mockup.*
+
+For the full workflow in one runnable script — generate data, load, validate, run two DE methods, check their concordance, plot — see [`examples/quickstart.py`](examples/quickstart.py) (`python examples/quickstart.py`, no network or R required).
 
 ## Why
 
@@ -105,17 +128,23 @@ Precision: of the genes DEConcord's own method calls significant, the fraction D
 - Concordance findings so far come from two datasets (`airway`, `pasilla`), both standard two-group designs. Whether DESeq2/edgeR concordance holds up on unbalanced groups, batch effects, or more complex designs hasn't been checked.
 - The underlying DE infrastructure (validation, QC, DE, enrichment) still only supports two-group condition comparisons (with optional covariate adjustment) — no paired samples or more than two condition levels.
 
+## Reproducibility
+
+Every CLI run writes a `run_metadata.json`: DEConcord version, Python version, core dependency versions, the exact command, an input summary (gene/sample counts, group membership), and every parameter used. It's meant to make a generated analysis reproducible without having to remember what was installed or passed in at the time — check it into version control alongside your results if you want a real audit trail.
+
 ## Roadmap
 
-Six areas, in the order a real analysis would move through them. Building depth-first, top to bottom — not skipping ahead.
+**Current** (built): method concordance — DESeq2 vs edgeR (or any two DE result tables), overlap, Jaccard, directional and effect-size agreement, concordant/discordant genes. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
 
-1. **Method concordance** (DESeq2 vs edgeR — overlap, Jaccard, directional and effect-size agreement, concordant/discordant genes). *Built.*
-2. **Threshold sensitivity**: which findings disappear under small, reasonable changes to the FDR or log2FC cutoff.
-3. **Pathway stability**: whether an enriched pathway stays enriched across methods and settings, or is itself method-sensitive.
-4. **Resampling stability**: bootstrap/subsampling/leave-one-out — how consistently a gene or pathway reappears.
-5. **Robustness/concordance metrics**: once 1–4 exist, whether a scientifically defensible summary statistic of "how robust is this conclusion" makes sense — not invented ahead of the infrastructure that would justify it.
-6. **Interpretation and reporting**: figures/tables that explain uncertainty, not just dump numbers.
+**Next**: threshold sensitivity (which findings disappear under small, reasonable changes to the FDR or log2FC cutoff); pathway stability (whether an enriched pathway stays enriched across methods and settings, or is itself method-sensitive).
 
-## Development
+**Later**: resampling stability (bootstrap/subsampling/leave-one-out — how consistently a gene or pathway reappears); a scientifically defensible robustness/concordance summary statistic, if one turns out to be justified once the above exists rather than invented ahead of it; richer interpretation and reporting.
 
-`DEVLOG.md` has the day-by-day account: what changed, what broke, what got rejected, and why. Git commit messages say *what* changed; that file is for *why*.
+No dates — this project moves at whatever pace it moves at, and a roadmap with fake deadlines is worse than one without.
+
+## Documentation, citation, and contributing
+
+- **Methodology**: what "concordance," "directional agreement," and the other terms above actually mean, how they're computed, and their limitations — [`METHODOLOGY.md`](METHODOLOGY.md).
+- **Development history**: `DEVLOG.md` has the day-by-day account of what changed, what broke, what got rejected, and why. Git commit messages say *what* changed; that file is for *why*. `CHANGELOG.md` has the user-facing summary per version.
+- **Citation**: see [`CITATION.cff`](CITATION.cff) (also usable via GitHub's "Cite this repository" button). Software citation only — there is no associated peer-reviewed publication.
+- **Contributing**: see [`CONTRIBUTING.md`](CONTRIBUTING.md) for environment setup, running tests, and code style. Bug reports and feature requests use the templates under `.github/ISSUE_TEMPLATE/`.

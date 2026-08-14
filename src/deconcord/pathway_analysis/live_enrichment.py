@@ -23,6 +23,8 @@ actually reach the public internet, and expect it to fail loudly, not
 silently, if it can't.
 """
 
+from __future__ import annotations
+
 import json
 import urllib.error
 import urllib.request

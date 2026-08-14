@@ -247,8 +247,17 @@ def run_analysis(
 
     if explain_results:
         # Imported lazily: this pulls in the anthropic SDK / python-dotenv,
-        # which shouldn't be required unless AI explanations are requested.
-        from deconcord.ai_explanation.methods import explain_de_results
+        # which shouldn't be required unless AI explanations are requested --
+        # they're an optional extra (`pip install deconcord[ai]`), not a
+        # core dependency.
+        try:
+            from deconcord.ai_explanation.methods import explain_de_results
+        except ImportError as exc:
+            raise ImportError(
+                "explain_results=True requires the optional 'ai' extra "
+                "(anthropic, python-dotenv). Install it with: "
+                "pip install deconcord[ai]"
+            ) from exc
 
         results["explanation"] = explain_de_results(de_results)
 

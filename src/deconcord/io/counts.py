@@ -11,27 +11,22 @@ _ORIENTATION_WARNING_MAX_ROWS = 30
 
 class CountMatrixError(Exception):
     """Base exception for problems found in a count matrix."""
-    pass
 
 
 class NonIntegerCountsError(CountMatrixError):
     """Raised when a count matrix contains non-integer columns."""
-    pass
 
 
 class NonUniqueIndexError(CountMatrixError):
     """Raised when a count matrix has a non-unique (duplicated) gene index."""
-    pass
 
 
 class NegativeCountsError(CountMatrixError):
     """Raised when a count matrix contains negative values."""
-    pass
 
 
 class MissingValuesError(CountMatrixError):
     """Raised when a count matrix contains missing (NaN) values."""
-    pass
 
 
 def check_no_missing_values(df: pd.DataFrame) -> bool:

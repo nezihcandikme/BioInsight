@@ -17,7 +17,11 @@ traceback.
 from __future__ import annotations
 
 import argparse
+import json
+import platform
 import sys
+from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +29,21 @@ import pandas as pd
 from deconcord.io.counts import CountMatrixError
 from deconcord.pathway_analysis.gmt import load_gmt
 from deconcord.pipeline import run_analysis
+
+# Packages a run_metadata.json should record the installed version of --
+# every core (non-optional) runtime dependency, so a generated analysis
+# can be reproduced without guessing what was installed when it ran.
+_TRACKED_PACKAGES = ["deconcord", "pandas", "numpy", "scipy", "statsmodels", "matplotlib", "scikit-learn"]
+
+
+def _installed_versions() -> dict[str, str]:
+    versions = {}
+    for pkg in _TRACKED_PACKAGES:
+        try:
+            versions[pkg] = version(pkg)
+        except PackageNotFoundError:
+            versions[pkg] = "not installed"
+    return versions
 
 
 def _parse_sample_list(raw: str) -> list[str]:
@@ -90,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-plots", action="store_true", help="Skip generating the volcano and PCA plots.")
     parser.add_argument("--explain", action="store_true", help="Generate a plain-language explanation of the results (requires ANTHROPIC_API_KEY).")
     parser.add_argument("--out", default="deconcord_output", help="Output directory. Default 'deconcord_output'.")
+    parser.add_argument("--version", action="version", version=f"deconcord {_installed_versions()['deconcord']}")
     return parser
 
 
@@ -147,33 +167,64 @@ def _run(argv: list[str]) -> int:
     )
 
     out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    tables_dir = out_dir / "tables"
+    figures_dir = out_dir / "figures"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    figures_dir.mkdir(parents=True, exist_ok=True)
 
     de = results["differential_expression"]
-    de.to_csv(out_dir / "differential_expression.csv")
-    results["qc"].to_csv(out_dir / "qc.csv")
+    de.to_csv(tables_dir / "differential_expression.csv")
+    results["qc"].to_csv(tables_dir / "qc.csv")
 
     if "pathway_enrichment" in results:
-        results["pathway_enrichment"].to_csv(out_dir / "pathway_enrichment.csv", index=False)
+        results["pathway_enrichment"].to_csv(tables_dir / "pathway_enrichment.csv", index=False)
 
     if "live_pathway_enrichment" in results:
-        results["live_pathway_enrichment"].to_csv(out_dir / "live_pathway_enrichment.csv", index=False)
+        results["live_pathway_enrichment"].to_csv(tables_dir / "live_pathway_enrichment.csv", index=False)
 
     if "volcano_fig" in results:
-        results["volcano_fig"].savefig(out_dir / "volcano.png", dpi=150, bbox_inches="tight")
+        results["volcano_fig"].savefig(figures_dir / "volcano.png", dpi=150, bbox_inches="tight")
     if "pca_fig" in results:
-        results["pca_fig"].savefig(out_dir / "pca.png", dpi=150, bbox_inches="tight")
+        results["pca_fig"].savefig(figures_dir / "pca.png", dpi=150, bbox_inches="tight")
     if "pathway_enrichment_fig" in results:
-        results["pathway_enrichment_fig"].savefig(out_dir / "pathway_enrichment.png", dpi=150, bbox_inches="tight")
+        results["pathway_enrichment_fig"].savefig(figures_dir / "pathway_enrichment.png", dpi=150, bbox_inches="tight")
     if "live_pathway_enrichment_fig" in results:
-        results["live_pathway_enrichment_fig"].savefig(out_dir / "live_pathway_enrichment.png", dpi=150, bbox_inches="tight")
+        results["live_pathway_enrichment_fig"].savefig(figures_dir / "live_pathway_enrichment.png", dpi=150, bbox_inches="tight")
 
     if "explanation" in results:
         (out_dir / "explanation.txt").write_text(results["explanation"])
 
+    run_metadata = {
+        "deconcord_version": _installed_versions()["deconcord"],
+        "python_version": platform.python_version(),
+        "package_versions": _installed_versions(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "command": "deconcord " + " ".join(argv),
+        "input_summary": {
+            "counts_file": args.counts,
+            "n_genes": int(results["raw_counts"].shape[0]),
+            "n_samples": int(results["raw_counts"].shape[1]),
+            "group_1": group_1,
+            "group_2": group_2,
+        },
+        "parameters": {
+            "method": args.method,
+            "alpha": args.alpha,
+            "lfc_threshold": args.lfc_threshold,
+            "min_count": args.min_count,
+            "min_samples": args.min_samples,
+            "covariates": covariate_cols,
+            "moderated_covariates": (not args.no_moderated_covariates) if covariate_cols else None,
+            "gmt_file": args.gmt,
+            "live_enrichment_organism": args.live_enrichment_organism,
+            "annotation_file": args.annotation,
+        },
+    }
+    (out_dir / "run_metadata.json").write_text(json.dumps(run_metadata, indent=2))
+
     n_sig = int(de["significant"].sum())
     print(f"{len(de)} genes tested, {n_sig} significant at alpha={args.alpha}, |log2FC|>{args.lfc_threshold}.")
-    print(f"Results written to {out_dir}/")
+    print(f"Results written to {out_dir}/ (tables/, figures/, run_metadata.json)")
 
     return 0
 

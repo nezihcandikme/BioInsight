@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import pandas as pd
@@ -17,16 +18,54 @@ def test_cli_runs_end_to_end_and_writes_outputs(tmp_path, capsys):
     ])
 
     assert exit_code == 0
-    assert (out_dir / "differential_expression.csv").exists()
-    assert (out_dir / "qc.csv").exists()
-    assert (out_dir / "volcano.png").exists()
-    assert (out_dir / "pca.png").exists()
+    assert (out_dir / "tables" / "differential_expression.csv").exists()
+    assert (out_dir / "tables" / "qc.csv").exists()
+    assert (out_dir / "figures" / "volcano.png").exists()
+    assert (out_dir / "figures" / "pca.png").exists()
+    assert (out_dir / "run_metadata.json").exists()
 
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     assert list(de.index) == ["gene1", "gene2", "gene3", "gene4"]
 
     captured = capsys.readouterr()
     assert "genes tested" in captured.out
+
+
+def test_cli_writes_run_metadata_with_expected_fields(tmp_path):
+    out_dir = tmp_path / "out"
+
+    main([
+        "tests/fixtures/cli_counts.csv",
+        "--group1", "sample1,sample2",
+        "--group2", "sample3,sample4",
+        "--alpha", "0.01",
+        "--method", "moderated",
+        "--no-plots",
+        "--out", str(out_dir),
+    ])
+
+    metadata = json.loads((out_dir / "run_metadata.json").read_text())
+
+    assert "deconcord_version" in metadata
+    assert "python_version" in metadata
+    assert metadata["package_versions"]["pandas"]
+    assert metadata["input_summary"]["n_genes"] == 4
+    assert metadata["input_summary"]["group_1"] == ["sample1", "sample2"]
+    assert metadata["parameters"]["method"] == "moderated"
+    assert metadata["parameters"]["alpha"] == 0.01
+    assert metadata["command"].startswith("deconcord tests/fixtures/cli_counts.csv")
+    # ISO 8601 timestamp -- just check it parses, not an exact value.
+    from datetime import datetime
+    datetime.fromisoformat(metadata["timestamp_utc"])
+
+
+def test_cli_version_flag_prints_version_and_exits(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip().startswith("deconcord ")
 
 
 def test_cli_no_plots_skips_figures(tmp_path):
@@ -40,8 +79,8 @@ def test_cli_no_plots_skips_figures(tmp_path):
         "--out", str(out_dir),
     ])
 
-    assert not (out_dir / "volcano.png").exists()
-    assert not (out_dir / "pca.png").exists()
+    assert not (out_dir / "figures" / "volcano.png").exists()
+    assert not (out_dir / "figures" / "pca.png").exists()
 
 
 def test_cli_with_gmt_writes_pathway_enrichment(tmp_path):
@@ -59,7 +98,7 @@ def test_cli_with_gmt_writes_pathway_enrichment(tmp_path):
     # sample_gene_sets.gmt doesn't share gene names with cli_counts.csv,
     # so this exercises the "runs without crashing on zero overlap" path --
     # the real assertion is that it still produced a table.
-    assert (out_dir / "pathway_enrichment.csv").exists()
+    assert (out_dir / "tables" / "pathway_enrichment.csv").exists()
 
 
 def test_cli_with_gmt_writes_pathway_enrichment_plot(tmp_path):
@@ -73,7 +112,7 @@ def test_cli_with_gmt_writes_pathway_enrichment_plot(tmp_path):
         "--out", str(out_dir),
     ])
 
-    assert (out_dir / "pathway_enrichment.png").exists()
+    assert (out_dir / "figures" / "pathway_enrichment.png").exists()
 
 
 def test_cli_min_count_filters_low_count_genes(tmp_path):
@@ -89,7 +128,7 @@ def test_cli_min_count_filters_low_count_genes(tmp_path):
         "--out", str(out_dir),
     ])
 
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     # gene4 = [8, 11, 4, 7] only clears 10 reads in one sample -- filtered out.
     assert "gene4" not in list(de.index)
 
@@ -120,7 +159,7 @@ def test_cli_moderated_method(tmp_path):
     ])
 
     assert exit_code == 0
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     assert list(de.index) == ["gene1", "gene2", "gene3", "gene4"]
 
 
@@ -152,7 +191,7 @@ def test_cli_annotation_adds_gene_symbol_column(tmp_path):
     ])
 
     assert exit_code == 0
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     assert de.loc["gene1", "gene_symbol"] == "GENE_ONE"
     assert de.loc["gene2", "gene_symbol"] == "GENE_TWO"
     assert pd.isna(de.loc["gene3", "gene_symbol"])
@@ -169,7 +208,7 @@ def test_cli_without_annotation_has_no_symbol_column(tmp_path):
         "--out", str(out_dir),
     ])
 
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     assert "gene_symbol" not in de.columns
 
 
@@ -217,7 +256,7 @@ def test_cli_live_enrichment_organism_writes_output(tmp_path):
 
     assert exit_code == 0
     mock_query.assert_called_once()
-    assert (out_dir / "live_pathway_enrichment.csv").exists()
+    assert (out_dir / "tables" / "live_pathway_enrichment.csv").exists()
 
 
 def test_cli_without_live_enrichment_organism_skips_it(tmp_path):
@@ -233,7 +272,7 @@ def test_cli_without_live_enrichment_organism_skips_it(tmp_path):
         ])
 
     mock_query.assert_not_called()
-    assert not (out_dir / "live_pathway_enrichment.csv").exists()
+    assert not (out_dir / "tables" / "live_pathway_enrichment.csv").exists()
 
 
 def test_cli_live_enrichment_network_failure_exits_nonzero(tmp_path):
@@ -272,8 +311,12 @@ def test_cli_with_covariates_writes_outputs(tmp_path):
     ])
 
     assert exit_code == 0
-    de = pd.read_csv(out_dir / "differential_expression.csv", index_col=0)
+    de = pd.read_csv(out_dir / "tables" / "differential_expression.csv", index_col=0)
     assert list(de.index) == ["gene1", "gene2", "gene3", "gene4"]
+
+    metadata = json.loads((out_dir / "run_metadata.json").read_text())
+    assert metadata["parameters"]["covariates"] == ["batch"]
+    assert metadata["parameters"]["moderated_covariates"] is False
 
 
 def test_cli_covariates_without_metadata_exits_nonzero(tmp_path):
