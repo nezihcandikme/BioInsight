@@ -51,7 +51,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">RNA-seq analysis pipeline · v0.10.0</span>
+        <span class="eyebrow">RNA-seq analysis pipeline · v0.11.0</span>
         <h1>Turn a count matrix<br />into something you can trust.</h1>
         <p class="lede">
           Validation, quality control, normalization, exploratory differential
@@ -226,6 +226,10 @@ Results written to omicforge_output/</span>
           <div class="capability">
             <h3>Exploratory DE</h3>
             <p>Welch's t-test or an empirical-Bayes moderated t-test, Benjamini-Hochberg correction, configurable thresholds.</p>
+          </div>
+          <div class="capability">
+            <h3>Covariate-adjusted DE</h3>
+            <p>A per-gene linear model that tests group_1 vs. group_2 while holding a batch, sex, or other covariate fixed, instead of letting it confound the result.</p>
           </div>
           <div class="capability">
             <h3>Volcano &amp; PCA plots</h3>

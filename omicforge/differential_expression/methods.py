@@ -369,6 +369,207 @@ _PVALUE_METHODS = {
 }
 
 
+def run_differential_expression_with_covariates(
+    df: pd.DataFrame,
+    group_1: list[str],
+    group_2: list[str],
+    metadata: pd.DataFrame,
+    covariate_cols: list[str],
+    alpha: float = 0.05,
+    lfc_threshold: float = 1.0,
+    moderated: bool = True,
+) -> pd.DataFrame:
+    """
+    Per-gene multiple linear regression DE test that adjusts for one or
+    more covariates, instead of comparing group_1 vs group_2 in isolation.
+
+    ``compute_pvalues``/``compute_moderated_pvalues`` treat every
+    within-group difference as noise and have no way to account for a
+    known source of variation that isn't the condition of interest -- a
+    batch, a subject's sex, an RNA extraction date. If group membership
+    happens to correlate with one of those, the simple two-group test
+    can't tell the real effect from the confound. This function instead
+    fits, per gene::
+
+        expression ~ intercept + condition + covariate_1 + covariate_2 + ...
+
+    by ordinary least squares, and tests the *condition* coefficient --
+    the group_1-vs-group_2 effect *holding the covariates fixed*.
+    Categorical covariates (non-numeric columns) are one-hot encoded with
+    the alphabetically first level dropped as the reference; numeric
+    covariates are used as-is (a linear covariate effect is assumed, not
+    tested).
+
+    There's no direct equivalent of ``compute_pvalues``'s Welch's t-test
+    here: Welch's test is specifically a two-independent-samples test and
+    doesn't generalize to "compare two levels while holding other
+    variables fixed" the way a linear model does. What this function
+    offers instead is the same equal-variance-per-gene linear model
+    ``compute_moderated_pvalues`` uses, generalized from a plain two-group
+    design to an arbitrary design matrix, with the same optional
+    empirical-Bayes variance shrinkage (Smyth, 2004) across genes.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Log-transformed, normalized expression matrix (genes as rows,
+        samples as columns).
+    group_1, group_2 : list[str]
+        Sample names for the two condition levels being compared. The
+        reported log fold change is the group_1-vs-group_2 coefficient
+        after adjusting for the covariates -- same sign convention as
+        ``compute_log_fold_change`` (group_1 relative to group_2), but not
+        the same quantity: this is a partial regression coefficient, not
+        a raw mean difference, unless every covariate happens to be
+        constant.
+    metadata : pd.DataFrame
+        Indexed by sample name, covering every sample in
+        ``group_1 + group_2``. Must contain every column named in
+        ``covariate_cols``.
+    covariate_cols : list[str]
+        Column names in ``metadata`` to include as covariates. At least
+        one is required -- with none, use ``run_differential_expression``
+        instead, which is simpler and doesn't carry a linear model's
+        extra assumptions.
+    alpha : float, optional
+        Adjusted p-value cutoff for the ``significant`` column. Default 0.05.
+    lfc_threshold : float, optional
+        Minimum ``abs(log_fold_change)`` for the ``significant`` column.
+        Default 1.0.
+    moderated : bool, optional
+        Whether to shrink each gene's residual variance toward a prior fit
+        across every other gene's residual variance, the same mechanism
+        ``compute_moderated_pvalues`` uses. Default True. Set False for a
+        plain per-gene OLS t-test with no cross-gene borrowing -- useful
+        with very few genes, where a prior can't be fit (see
+        ``_fit_ebayes_prior``).
+
+    Returns
+    -------
+    pd.DataFrame
+        Indexed by gene, with columns ``log_fold_change``, ``p_value``,
+        ``adjusted_p_value``, ``significant`` -- same meaning as
+        ``run_differential_expression``, except ``log_fold_change`` is the
+        covariate-adjusted coefficient described above.
+
+    Raises
+    ------
+    ValueError
+        If ``covariate_cols`` is empty, a sample from ``group_1``/
+        ``group_2`` is missing from ``metadata``, a covariate column is
+        missing or contains NaN for a used sample, or the resulting
+        design matrix is rank-deficient (e.g. a covariate that's constant,
+        or collinear with group membership -- a linear model can't
+        separate two effects that never vary independently in the data).
+    """
+    if not (0 < alpha <= 1):
+        raise ValueError(f"alpha must be in (0, 1]; got {alpha}.")
+    if lfc_threshold < 0:
+        raise ValueError(f"lfc_threshold must be >= 0; got {lfc_threshold}.")
+
+    _validate_groups(df, group_1, group_2)
+
+    if not covariate_cols:
+        raise ValueError(
+            "covariate_cols is empty -- with no covariates, use "
+            "run_differential_expression instead."
+        )
+
+    samples = group_1 + group_2
+
+    missing_samples = [s for s in samples if s not in metadata.index]
+    if missing_samples:
+        raise ValueError(
+            f"Sample(s) {missing_samples} appear in group_1/group_2 but are "
+            "not present in metadata's index."
+        )
+
+    missing_cols = [c for c in covariate_cols if c not in metadata.columns]
+    if missing_cols:
+        raise ValueError(f"covariate_cols {missing_cols} not found in metadata's columns.")
+
+    meta = metadata.loc[samples, covariate_cols]
+    if meta.isna().any().any():
+        bad_samples = meta.index[meta.isna().any(axis=1)].tolist()
+        raise ValueError(f"metadata has missing covariate values for sample(s) {bad_samples}.")
+
+    condition = pd.Series(
+        {**{s: 1.0 for s in group_1}, **{s: 0.0 for s in group_2}}
+    )[samples]
+
+    design = pd.DataFrame({"condition": condition}, index=samples)
+    for col in covariate_cols:
+        column = meta[col]
+        if pd.api.types.is_numeric_dtype(column):
+            design[col] = column.astype(float)
+        else:
+            dummies = pd.get_dummies(column.astype(str), prefix=col, drop_first=True, dtype=float)
+            if dummies.shape[1] == 0:
+                # A single-level categorical produces zero dummy columns
+                # (drop_first drops the only level there is) -- it would
+                # otherwise silently vanish from the design matrix instead
+                # of being caught as "nothing to adjust for."
+                raise ValueError(
+                    f"Covariate '{col}' has only one distinct value across "
+                    "these samples -- there's nothing to adjust for."
+                )
+            dummies.index = samples
+            design = design.join(dummies)
+    design.insert(0, "intercept", 1.0)
+
+    X = design.to_numpy(dtype=float)
+    n_samples, n_params = X.shape
+    rank = int(np.linalg.matrix_rank(X))
+    if rank < n_params:
+        raise ValueError(
+            f"The design matrix is rank-deficient (rank {rank} < {n_params} "
+            "parameters) -- a covariate is likely constant or collinear "
+            "with group_1/group_2 membership, so their individual effects "
+            "can't be separated."
+        )
+
+    df_resid = n_samples - rank
+    if df_resid < 1:
+        raise ValueError(
+            f"Not enough samples ({n_samples}) for {n_params} design "
+            "parameters -- need at least one residual degree of freedom."
+        )
+
+    condition_idx = design.columns.get_loc("condition")
+
+    Y = df[samples].to_numpy(dtype=float).T  # samples x genes
+    XtX_inv = np.linalg.inv(X.T @ X)
+    beta = XtX_inv @ X.T @ Y  # n_params x genes
+
+    residuals = Y - X @ beta
+    sigma_sq = np.sum(residuals ** 2, axis=0) / df_resid  # per gene
+
+    if moderated:
+        d0, s0_sq = _fit_ebayes_prior(pd.Series(sigma_sq, index=df.index), df_resid)
+        variance_for_test = (d0 * s0_sq + df_resid * sigma_sq) / (d0 + df_resid)
+        test_df = d0 + df_resid
+    else:
+        variance_for_test = sigma_sq
+        test_df = df_resid
+
+    log_fold_change = beta[condition_idx]
+    standard_error = np.sqrt(variance_for_test * XtX_inv[condition_idx, condition_idx])
+    t_statistic = log_fold_change / standard_error
+    p_values = 2 * stats.t.sf(np.abs(t_statistic), df=test_df)
+
+    results_df = pd.DataFrame({
+        "log_fold_change": pd.Series(log_fold_change, index=df.index),
+        "p_value": pd.Series(p_values, index=df.index),
+    })
+    results_df["adjusted_p_value"] = compute_adjusted_pvalues(results_df["p_value"])
+    results_df["significant"] = (
+        (results_df["adjusted_p_value"] < alpha)
+        & (results_df["log_fold_change"].abs() > lfc_threshold)
+    )
+
+    return results_df
+
+
 def run_differential_expression(
     df: pd.DataFrame,
     group_1: list[str],

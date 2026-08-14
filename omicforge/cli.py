@@ -64,6 +64,24 @@ def build_parser() -> argparse.ArgumentParser:
              "column to differential_expression.csv (NaN for genes not in the file).",
     )
     parser.add_argument(
+        "--metadata",
+        help="Path to a sample metadata CSV (a 'sample' column, or the sample name as the "
+             "first column, plus one column per covariate). Required together with "
+             "--covariates; ignored otherwise.",
+    )
+    parser.add_argument(
+        "--covariates",
+        help="Comma-separated column names in --metadata to adjust for (e.g. a batch or sex "
+             "column). Switches differential expression to a linear-model test that holds "
+             "these fixed while testing group1 vs group2 -- see --method's help for the "
+             "simpler default. Requires --metadata.",
+    )
+    parser.add_argument(
+        "--no-moderated-covariates", action="store_true",
+        help="With --covariates, use a plain per-gene OLS t-test instead of the default "
+             "empirical-Bayes variance shrinkage across genes.",
+    )
+    parser.add_argument(
         "--live-enrichment-organism",
         help="g:Profiler organism code (e.g. 'hsapiens'). If given, also runs pathway "
              "enrichment against the live g:Profiler API and writes live_pathway_enrichment.csv. "
@@ -81,6 +99,20 @@ def _run(argv: list[str]) -> int:
 
     group_1 = _parse_sample_list(args.group1)
     group_2 = _parse_sample_list(args.group2)
+
+    covariate_cols = None
+    metadata = None
+    if args.covariates is not None:
+        if args.metadata is None:
+            raise ValueError("--covariates requires --metadata to also be given.")
+        covariate_cols = _parse_sample_list(args.covariates)
+        metadata = pd.read_csv(args.metadata)
+        if "sample" in metadata.columns:
+            metadata = metadata.set_index("sample")
+        else:
+            metadata = metadata.set_index(metadata.columns[0])
+    elif args.metadata is not None:
+        raise ValueError("--metadata is only used together with --covariates.")
 
     gene_sets = None
     background_genes = None
@@ -105,6 +137,9 @@ def _run(argv: list[str]) -> int:
         alpha=args.alpha,
         lfc_threshold=args.lfc_threshold,
         method=args.method,
+        metadata=metadata,
+        covariate_cols=covariate_cols,
+        moderated_covariates=not args.no_moderated_covariates,
         gene_annotation=args.annotation,
         generate_plots=not args.no_plots,
         explain_results=args.explain,

@@ -1,6 +1,6 @@
 # OmicForge
 
-A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.10.0.
+A small Python pipeline for bulk RNA-seq: validation, sample QC, normalization, differential expression, gene annotation, pathway enrichment, and plots — as a library or a CLI. v0.11.0.
 
 Not a replacement for DESeq2 or edgeR — checked against both (see [Validation](#validation)), explicit about where it falls short.
 
@@ -55,7 +55,7 @@ load → validate → QC → normalize → (filter) → differential expression 
 - **Validation**: non-negative integer counts, no duplicate IDs, no missing values, a transposed-matrix heuristic — specific error messages, checked first.
 - **Sample QC**: library size, genes detected, MAD-based outlier flags.
 - **Normalization**: CPM + log2 scale, with optional low-count gene filtering first.
-- **Differential expression**: Welch's t-test per gene (default), or an opt-in empirical-Bayes moderated t-test that borrows variance across genes (`method="moderated"`). Benjamini-Hochberg correction either way.
+- **Differential expression**: Welch's t-test per gene (default), or an opt-in empirical-Bayes moderated t-test that borrows variance across genes (`method="moderated"`). Benjamini-Hochberg correction either way. If a batch, sex, or other covariate is a real confound, `covariate_cols` switches to a per-gene linear model that adjusts for it instead.
 - **Gene annotation** (optional): attach symbols from a local `gene_id,gene_symbol` CSV. No live API; unmapped genes get `NaN`, not a guess.
 - **Pathway enrichment** (optional): local hypergeometric test against a GMT file and an explicit background, or a live g:Profiler query (GO/KEGG/Reactome/WikiPathways) if you have internet access.
 - **GEO acquisition** (optional): list/download a GEO series' supplementary files and parse its sample metadata from a `GSE` accession.
@@ -80,13 +80,14 @@ Precision: of the genes OmicForge calls significant, the fraction DESeq2/edgeR a
 - Bulk RNA-seq count matrices only. No single-cell, no other omics types, despite the name's broader ambition.
 - Default DE method (Welch's t-test) has measurably lower recall than DESeq2/edgeR on every dataset checked so far — see the table above. Expected and explained, not a bug, but real effects get missed.
 - Two benchmark datasets is a real check, not a large one. Other tissues, organisms, or designs (unbalanced groups, batch effects, more than two conditions) haven't been measured.
-- Two-group comparisons only — no covariates, paired samples, or multi-factor models.
+- Still a two-level condition comparison (group_1 vs group_2) either way. `covariate_cols` adjusts for additional variables measured on the same samples, but doesn't support paired/repeated-measures samples or a condition with more than two levels.
+- The covariate-adjusted model has no Welch's-test option (a linear model needs a shared per-gene variance assumption to test a coefficient) and no built-in check for whether a covariate is even worth including — that judgment is left to the caller.
 - Local pathway enrichment has no gene-set-size or overlap correction beyond Benjamini-Hochberg; only as good as the background you give it.
 - The LLM layer narrates numbers, doesn't verify them — a summary, not an additional check.
 
 ## Roadmap
 
-**Near term**: strengthen bulk RNA-seq validation, more benchmark datasets, better experimental-design/metadata handling, better enrichment reporting.
+**Near term**: strengthen bulk RNA-seq validation, more benchmark datasets, paired-sample and multi-level-condition designs, better enrichment reporting.
 
 **Later**: additional transcriptomic workflows; broader omics support where scientifically justified, not by default.
 

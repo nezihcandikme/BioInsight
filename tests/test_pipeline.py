@@ -281,6 +281,69 @@ def test_run_analysis_live_enrichment_generates_plot_by_default():
     assert "live_pathway_enrichment_fig" in results
 
 
+def test_run_analysis_with_covariates_uses_linear_model():
+    df = _toy_counts()
+    metadata = pd.DataFrame(
+        {"batch": ["batch_A", "batch_B", "batch_A", "batch_B"]},
+        index=["sample1", "sample2", "sample3", "sample4"],
+    )
+
+    results = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        metadata=metadata,
+        covariate_cols=["batch"],
+        moderated_covariates=False,
+        generate_plots=False,
+    )
+
+    de = results["differential_expression"]
+    assert list(de.index) == list(df.index)
+    assert not de["p_value"].isna().any()
+
+
+def test_run_analysis_covariates_without_metadata_raises():
+    df = _toy_counts()
+
+    with pytest.raises(ValueError, match="metadata"):
+        run_analysis(
+            df,
+            group_1=["sample1", "sample2"],
+            group_2=["sample3", "sample4"],
+            covariate_cols=["batch"],
+            generate_plots=False,
+        )
+
+
+def test_run_analysis_without_covariate_cols_ignores_metadata_and_uses_method():
+    # metadata alone (no covariate_cols) shouldn't change anything -- the
+    # plain group_1/group_2 path via `method` still runs.
+    df = _toy_counts()
+    metadata = pd.DataFrame(
+        {"batch": ["batch_A", "batch_B", "batch_A", "batch_B"]},
+        index=["sample1", "sample2", "sample3", "sample4"],
+    )
+
+    with_metadata = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        metadata=metadata,
+        generate_plots=False,
+    )
+    without_metadata = run_analysis(
+        df,
+        group_1=["sample1", "sample2"],
+        group_2=["sample3", "sample4"],
+        generate_plots=False,
+    )
+
+    pd.testing.assert_frame_equal(
+        with_metadata["differential_expression"], without_metadata["differential_expression"],
+    )
+
+
 def test_run_analysis_empty_live_enrichment_skips_plot():
     df = _toy_counts()
     empty_result = pd.DataFrame(columns=["source", "name", "p_value", "intersection_size"])

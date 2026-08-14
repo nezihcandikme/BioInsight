@@ -19,7 +19,10 @@ from omicforge.io.counts import load_count_matrix, validate_counts
 from omicforge.qc.metrics import run_sample_qc
 from omicforge.filtering.methods import filter_low_count_genes
 from omicforge.normalization.methods import compute_cpm, log2_transform
-from omicforge.differential_expression.methods import run_differential_expression
+from omicforge.differential_expression.methods import (
+    run_differential_expression,
+    run_differential_expression_with_covariates,
+)
 from omicforge.visualization.plots import plot_volcano, plot_pca, plot_pathway_enrichment
 from omicforge.pathway_analysis.methods import run_pathway_enrichment_analysis
 from omicforge.annotation.methods import annotate_de_results, load_gene_annotation
@@ -36,6 +39,9 @@ def run_analysis(
     alpha: float = 0.05,
     lfc_threshold: float = 1.0,
     method: str = "welch",
+    metadata: pd.DataFrame | None = None,
+    covariate_cols: list[str] | None = None,
+    moderated_covariates: bool = True,
     gene_annotation: dict[str, str] | str | None = None,
     generate_plots: bool = True,
     explain_results: bool = False,
@@ -87,7 +93,30 @@ def run_analysis(
         ``"moderated"`` (empirical-Bayes variance shrinkage across genes —
         more statistical power, assumes each gene's two groups share one
         variance). Passed through to ``run_differential_expression``; see
-        its docstring and ``benchmarks/`` for the measured tradeoff.
+        its docstring and ``benchmarks/`` for the measured tradeoff. Ignored
+        if ``covariate_cols`` is given — see below.
+    metadata : pd.DataFrame, optional
+        Sample metadata indexed by sample name, covering every sample in
+        ``group_1 + group_2``. Only used when ``covariate_cols`` is also
+        given (e.g. as returned by
+        ``omicforge.io.geo.fetch_geo_sample_metadata``, or your own CSV
+        loaded with the sample name as the index).
+    covariate_cols : list[str], optional
+        Column names in ``metadata`` to adjust for — a batch, sex, or any
+        other measured source of variation that isn't the condition of
+        interest. If given, differential expression switches from
+        ``run_differential_expression`` (a plain two-group test, ``method``
+        selects Welch's or moderated) to
+        ``run_differential_expression_with_covariates`` (a per-gene linear
+        model with the condition and these covariates as terms — see its
+        docstring for what "log fold change" means in that case, and why
+        there's no Welch's-test option once covariates are involved).
+        Default ``None`` — no covariate adjustment, existing callers see no
+        change.
+    moderated_covariates : bool, optional
+        Only used when ``covariate_cols`` is given. Whether to shrink each
+        gene's residual variance toward a cross-gene prior, same idea as
+        ``method="moderated"`` for the plain two-group case. Default True.
     gene_annotation : dict[str, str] or str, optional
         Either a pre-loaded gene ID -> gene symbol dict, or a path to a
         two-column CSV to load one from (see
@@ -163,7 +192,15 @@ def run_analysis(
     normalized = log2_transform(cpm)
     results["normalized"] = normalized
 
-    de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold, method=method)
+    if covariate_cols is not None:
+        if metadata is None:
+            raise ValueError("metadata must be provided when covariate_cols is given.")
+        de_results = run_differential_expression_with_covariates(
+            normalized, group_1, group_2, metadata, covariate_cols,
+            alpha=alpha, lfc_threshold=lfc_threshold, moderated=moderated_covariates,
+        )
+    else:
+        de_results = run_differential_expression(normalized, group_1, group_2, alpha=alpha, lfc_threshold=lfc_threshold, method=method)
     results["differential_expression"] = de_results
 
     if gene_annotation is not None:
