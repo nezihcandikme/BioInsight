@@ -9,10 +9,10 @@ authors:
   - given-names: Nezih Can
     family-names: Dikme
     email: nezihcandikme@gmail.com
-repository-code: "https://github.com/nezihcandikme/BioInsight"
-url: "https://github.com/nezihcandikme/BioInsight"
+repository-code: "https://github.com/nezihcandikme/DeConcord"
+url: "https://github.com/nezihcandikme/DeConcord"
 license: MIT
-version: 0.13.0
+version: 0.13.1
 date-released: "2026-08-14"
 keywords:
   - rna-seq

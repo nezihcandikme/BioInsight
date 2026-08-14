@@ -1,6 +1,6 @@
 # DEConcord
 
-[![Tests](https://github.com/nezihcandikme/BioInsight/actions/workflows/tests.yml/badge.svg)](https://github.com/nezihcandikme/BioInsight/actions/workflows/tests.yml)
+[![Tests](https://github.com/nezihcandikme/DeConcord/actions/workflows/tests.yml/badge.svg)](https://github.com/nezihcandikme/DeConcord/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -10,13 +10,13 @@ Most RNA-seq workflows report the significant genes or pathways from one particu
 
 Not a DESeq2/edgeR replacement, and not trying to be. DEConcord doesn't run its own differential expression as its main job — it takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
 
-**Status**: early, pre-1.0 (v0.13.0), under active development. The core method-concordance question is implemented and checked against real data (see [Validation](#validation)); threshold sensitivity, pathway stability, and resampling stability are on the [roadmap](#roadmap), not yet built.
+**Status**: early, pre-1.0 (v0.13.1), under active development. The core method-concordance question is implemented and checked against real data (see [Validation](#validation)); threshold sensitivity, pathway stability, and resampling stability are on the [roadmap](#roadmap), not yet built.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/nezihcandikme/BioInsight.git
-cd BioInsight
+git clone https://github.com/nezihcandikme/DeConcord.git
+cd DeConcord
 pip install -e .
 ```
 

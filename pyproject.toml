@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deconcord"
-version = "0.13.0"
+version = "0.13.1"
 description = "Robustness and concordance analysis for RNA-seq differential expression -- given DE result tables from DESeq2, edgeR, or any other tool, computes method concordance (significant-gene overlap, directional and effect-size agreement, concordant/discordant genes). Also ships the RNA-seq pipeline (validation, QC, normalization, exploratory/covariate-adjusted DE, annotation, pathway enrichment, visualization) that generates the DE tables it compares."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -48,10 +48,11 @@ ai = ["anthropic", "python-dotenv"]
 dev = ["pytest", "ruff"]
 
 [project.urls]
-Homepage = "https://github.com/nezihcandikme/BioInsight"
-Repository = "https://github.com/nezihcandikme/BioInsight"
-Changelog = "https://github.com/nezihcandikme/BioInsight/blob/main/CHANGELOG.md"
-Issues = "https://github.com/nezihcandikme/BioInsight/issues"
+Homepage = "https://nezihcandikme.github.io/DeConcord/"
+Repository = "https://github.com/nezihcandikme/DeConcord"
+Documentation = "https://nezihcandikme.github.io/DeConcord/"
+Changelog = "https://github.com/nezihcandikme/DeConcord/blob/main/CHANGELOG.md"
+Issues = "https://github.com/nezihcandikme/DeConcord/issues"
 
 [project.scripts]
 deconcord = "deconcord.cli:main"

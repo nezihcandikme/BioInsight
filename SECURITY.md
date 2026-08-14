@@ -25,5 +25,5 @@ enterprise-grade, but reports will be taken seriously and credited.
 
 For ordinary bugs (incorrect statistics, crashes on valid input,
 documentation errors), please use the normal
-[issue tracker](https://github.com/nezihcandikme/BioInsight/issues)
+[issue tracker](https://github.com/nezihcandikme/DeConcord/issues)
 instead.

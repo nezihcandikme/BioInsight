@@ -35,7 +35,7 @@
       </nav>
 
       <div class="nav-cta">
-        <a class="btn btn-secondary btn-sm" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-secondary btn-sm" href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">GitHub</a>
         <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -52,7 +52,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">Differential expression concordance · v0.13.0</span>
+        <span class="eyebrow">Differential expression concordance · v0.13.1</span>
         <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
         <p class="lede">
           DEConcord takes DE result tables — DESeq2, edgeR, or anything with
@@ -60,7 +60,7 @@
           much of the biological conclusion survives the choice of method.
         </p>
         <div class="actions">
-          <a class="btn btn-primary" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">View on GitHub</a>
+          <a class="btn btn-primary" href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">View on GitHub</a>
           <a class="btn btn-secondary" href="#pipeline">See how it works</a>
         </div>
 
@@ -138,7 +138,7 @@ result["discordant_genes"]                  # []</span>
             real DESeq2/edgeR output on two independent public datasets
             (<code>airway</code>, human; <code>pasilla</code>, <em>Drosophila</em>),
             each tool run with its own default settings. Full methodology in
-            <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.
+            <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.
           </p>
         </div>
 
@@ -333,7 +333,7 @@ result["discordant_genes"]                  # []</span>
         <div class="section-head">
           <span class="eyebrow">Infrastructure benchmark</span>
           <h2>DEConcord's own DE method, checked against DESeq2 and edgeR.</h2>
-          <p>A different question from the concordance numbers above: not "how much do DESeq2 and edgeR agree with each other," but "how close is DEConcord's own from-scratch DE implementation to either one." Real DESeq2 and real edgeR, both run with their own default settings, on the <code>airway</code> dataset — the same one DESeq2's own vignette uses. Methodology and full write-up in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+          <p>A different question from the concordance numbers above: not "how much do DESeq2 and edgeR agree with each other," but "how close is DEConcord's own from-scratch DE implementation to either one." Real DESeq2 and real edgeR, both run with their own default settings, on the <code>airway</code> dataset — the same one DESeq2's own vignette uses. Methodology and full write-up in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
         </div>
 
         <div class="stat-row">
@@ -363,8 +363,8 @@ result["discordant_genes"]                  # []</span>
         </div>
 
         <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and DEConcord's default exploratory method doesn't. It also never flagged a gene neither of them agreed with. Fast first look, not a final answer — same conclusion the README has stated all along, now with a number attached to it.</p>
-        <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). DEConcord also has an opt-in empirical-Bayes moderated t-test that does borrow across genes — on this same real dataset, it found more than double the significant genes (196 → 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade; both numbers are real and both are in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
-        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code> — <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't: with the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too — precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/BioInsight/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). DEConcord also has an opt-in empirical-Bayes moderated t-test that does borrow across genes — on this same real dataset, it found more than double the significant genes (196 → 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade; both numbers are real and both are in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code> — <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't: with the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too — precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
       </div>
     </section>
 
@@ -402,7 +402,7 @@ result["discordant_genes"]                  # []</span>
             test, and one increasingly specific error message at a time.
           </p>
 
-          <p class="why-signoff">Every decision behind the code — what shipped, what broke, what got rejected — is written down in <a href="https://github.com/nezihcandikme/BioInsight/blob/main/DEVLOG.md" target="_blank" rel="noopener" class="link-accent">DEVLOG.md</a>.</p>
+          <p class="why-signoff">Every decision behind the code — what shipped, what broke, what got rejected — is written down in <a href="https://github.com/nezihcandikme/DeConcord/blob/main/DEVLOG.md" target="_blank" rel="noopener" class="link-accent">DEVLOG.md</a>.</p>
         </div>
       </div>
     </section>
@@ -415,12 +415,12 @@ result["discordant_genes"]                  # []</span>
           <h2>Clone it, install it, question the output.</h2>
           <p>DEConcord is early, honest about it, and built in the open. Read the source before you trust the numbers.</p>
           <div class="actions">
-            <a class="btn btn-primary" href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">View on GitHub</a>
-            <a class="btn btn-secondary" href="https://github.com/nezihcandikme/BioInsight#readme" target="_blank" rel="noopener">Read the README</a>
+            <a class="btn btn-primary" href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">View on GitHub</a>
+            <a class="btn btn-secondary" href="https://github.com/nezihcandikme/DeConcord#readme" target="_blank" rel="noopener">Read the README</a>
           </div>
           <div class="cta-install">
             <span class="prompt">$</span>
-            <span>git clone https://github.com/nezihcandikme/BioInsight.git &amp;&amp; pip install -e .</span>
+            <span>git clone https://github.com/nezihcandikme/DeConcord.git &amp;&amp; pip install -e .</span>
           </div>
           <p class="cta-note">Requires Python 3.9+. Installs a <code>deconcord</code> command as well as the library.</p>
         </div>
@@ -437,9 +437,9 @@ result["discordant_genes"]                  # []</span>
           DEConcord
         </a>
         <ul class="footer-links">
-          <li><a href="https://github.com/nezihcandikme/BioInsight" target="_blank" rel="noopener">GitHub</a></li>
-          <li><a href="https://github.com/nezihcandikme/BioInsight#readme" target="_blank" rel="noopener">README</a></li>
-          <li><a href="https://github.com/nezihcandikme/BioInsight/blob/main/DEVLOG.md" target="_blank" rel="noopener">Devlog</a></li>
+          <li><a href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/nezihcandikme/DeConcord#readme" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/nezihcandikme/DeConcord/blob/main/DEVLOG.md" target="_blank" rel="noopener">Devlog</a></li>
         </ul>
       </div>
       <p class="footer-note">&copy; <span id="year">2026</span> Nezih Can Dikme. DEConcord is an educational project — not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>

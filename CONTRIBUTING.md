@@ -8,8 +8,8 @@ read it.
 ## Setup
 
 ```bash
-git clone https://github.com/nezihcandikme/BioInsight.git
-cd BioInsight
+git clone https://github.com/nezihcandikme/DeConcord.git
+cd DeConcord
 python -m venv .venv
 source .venv/bin/activate  # .venv\Scripts\activate on Windows
 pip install -e ".[dev]"

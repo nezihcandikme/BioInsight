@@ -9,6 +9,19 @@ This file is user-facing — what changed and what it means for you. For the
 reasoning behind each decision (including rejected alternatives), see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.13.1] — 2026-08-14
+
+### Fixed
+- The GitHub repository was renamed `BioInsight` → `DeConcord`, but every
+  URL in `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CITATION.cff`,
+  `pyproject.toml`, and `docs/index.html` still pointed at the old
+  `BioInsight` path — including the README's own `git clone` command.
+  Updated all of them (GitHub's redirect from the old name masked this
+  from anyone clicking through, but not from anyone reading the raw
+  text). `DEVLOG.md`'s historical entries are unaffected — they describe
+  what was true when written. `pyproject.toml`'s `Homepage` now also
+  points at the live GitHub Pages site instead of the repository itself.
+
 ## [0.13.0] — 2026-08-14
 
 Professionalization pass: no new analytical capability, focused on making
