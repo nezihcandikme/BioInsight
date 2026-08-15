@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DEConcord — how much do DESeq2 and edgeR actually agree?</title>
-  <meta name="description" content="DEConcord measures concordance between RNA-seq differential expression results — DESeq2 vs edgeR, or any two DE result tables — so you know which conclusions survive a reasonable change in method, not just what one tool reported." />
+  <title>DEConcord: how much do DESeq2 and edgeR actually agree?</title>
+  <meta name="description" content="DEConcord measures concordance between RNA-seq differential expression results, DESeq2 vs edgeR or any two DE result tables, so you know which conclusions survive a reasonable change in method, not just what one tool reported." />
 
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="stylesheet" href="styles.css" />
 
-  <meta property="og:title" content="DEConcord — how much do DESeq2 and edgeR actually agree?" />
-  <meta property="og:description" content="Method concordance, threshold sensitivity, and pathway stability for RNA-seq differential expression — depth over breadth, on purpose." />
+  <meta property="og:title" content="DEConcord: how much do DESeq2 and edgeR actually agree?" />
+  <meta property="og:description" content="Method concordance, threshold sensitivity, and pathway stability for RNA-seq differential expression. Depth over breadth, on purpose." />
   <meta property="og:type" content="website" />
 </head>
 <body>
@@ -52,11 +52,11 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">Differential expression concordance · v0.13.1</span>
+        <span class="eyebrow">Differential expression concordance · v0.13.2</span>
         <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
         <p class="lede">
-          DEConcord takes DE result tables — DESeq2, edgeR, or anything with
-          a gene ID, a log fold change, and a p-value — and measures how
+          DEConcord takes DE result tables (DESeq2, edgeR, or anything with
+          a gene ID, a log fold change, and a p-value) and measures how
           much of the biological conclusion survives the choice of method.
         </p>
         <div class="actions">
@@ -98,10 +98,10 @@ result["discordant_genes"]                  # []</span>
           <p>
             DESeq2 and edgeR can both run correctly on the same count matrix
             and still call a different set of genes significant. That gap is
-            real information, not noise to average away — DEConcord measures
+            real information, not noise to average away. DEConcord measures
             it directly instead of picking one tool and hoping. The pipeline
             below (validation through pathway enrichment) is what's left of
-            DEConcord's original, broader RNA-seq toolkit — kept as
+            DEConcord's original, broader RNA-seq toolkit. It's kept as
             infrastructure that still generates real DE result tables to
             compare, not as the project's main focus anymore.
           </p>
@@ -111,12 +111,12 @@ result["discordant_genes"]                  # []</span>
           <div class="explainer-block">
             <span class="num">01</span>
             <h3>Is the data even usable?</h3>
-            <p>Non-negative integers, no duplicate gene IDs, no missing values, correct orientation — checked before anything else runs.</p>
+            <p>Non-negative integers, no duplicate gene IDs, no missing values, correct orientation. Checked before anything else runs.</p>
           </div>
           <div class="explainer-block">
             <span class="num">02</span>
             <h3>Can these samples be compared?</h3>
-            <p>Different sequencing depths, dead or outlier samples, low-count genes — normalized and filtered before they can quietly bias a result.</p>
+            <p>Different sequencing depths, dead or outlier samples, low-count genes. Normalized and filtered before they can quietly bias a result.</p>
           </div>
           <div class="explainer-block">
             <span class="num">03</span>
@@ -145,19 +145,19 @@ result["discordant_genes"]                  # []</span>
         <div class="stat-row">
           <div class="stat">
             <span class="stat-value">0.76 / 0.78</span>
-            <span class="stat-label">Jaccard index — significant-gene overlap (airway / pasilla)</span>
+            <span class="stat-label">Jaccard index: significant-gene overlap (airway / pasilla)</span>
           </div>
           <div class="stat">
             <span class="stat-value">&gt;0.998</span>
-            <span class="stat-label">Pearson r, log fold change — DESeq2 vs edgeR, every gene tested</span>
+            <span class="stat-label">Pearson r, log fold change: DESeq2 vs edgeR, every gene tested</span>
           </div>
           <div class="stat">
             <span class="stat-value">0 / 0</span>
-            <span class="stat-label">Discordant genes — significant in both, but disagreeing on direction</span>
+            <span class="stat-label">Discordant genes: significant in both, but disagreeing on direction</span>
           </div>
         </div>
 
-        <p class="benchmark-note">Two established tools, run independently, agree strongly: high correlation, perfect directional agreement among genes both call significant. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold — not about direction or magnitude for genes both agree are real. A real finding on two datasets, not a general law about DESeq2 vs edgeR.</p>
+        <p class="benchmark-note">Two established tools, run independently, agree strongly. Correlation is high, and directional agreement among genes both call significant is perfect. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes both agree are real. This is a real finding on two datasets, not a general law about DESeq2 vs edgeR.</p>
       </div>
     </section>
 
@@ -166,7 +166,7 @@ result["discordant_genes"]                  # []</span>
       <div class="container">
         <div class="section-head">
           <span class="eyebrow">The pipeline</span>
-          <h2>Load → validate → inspect → normalize → compare → visualize → interpret.</h2>
+          <h2>Load, validate, inspect, normalize, compare, visualize, interpret.</h2>
           <p>The same order an analysis actually follows. Every stage is also a function you can call on its own.</p>
         </div>
 
@@ -177,7 +177,7 @@ result["discordant_genes"]                  # []</span>
               <div class="step-line"></div>
             </div>
             <h4>Count Matrix</h4>
-            <p>A CSV or DataFrame — genes as rows, samples as columns.</p>
+            <p>A CSV or DataFrame. Genes as rows, samples as columns.</p>
           </div>
 
           <div class="pipeline-step">
@@ -223,7 +223,7 @@ result["discordant_genes"]                  # []</span>
               <div class="step-line"></div>
             </div>
             <h4>Pathway Analysis</h4>
-            <p>Hypergeometric enrichment against a background you define — not "every gene that exists." Reads standard .gmt gene-set files directly.</p>
+            <p>Hypergeometric enrichment against a background you define, not "every gene that exists." Reads standard .gmt gene-set files directly.</p>
           </div>
 
           <div class="pipeline-step">
@@ -245,7 +245,7 @@ result["discordant_genes"]                  # []</span>
         <div class="section-head">
           <span class="eyebrow">Capabilities</span>
           <h2>What's actually implemented.</h2>
-          <p>No placeholders — every item below is a real, tested function you can call today.</p>
+          <p>No placeholders. Every item below is a real, tested function you can call today.</p>
         </div>
 
         <div class="capabilities-grid">
@@ -275,11 +275,11 @@ result["discordant_genes"]                  # []</span>
           </div>
           <div class="capability">
             <h3>Volcano &amp; PCA plots</h3>
-            <p>Generated straight from the results — no separate plotting step to forget.</p>
+            <p>Generated straight from the results. No separate plotting step to forget.</p>
           </div>
           <div class="capability">
             <h3>Pathway enrichment</h3>
-            <p>Local hypergeometric test against a background you explicitly define, or an opt-in live query against g:Profiler's curated GO/KEGG/Reactome databases — plus a dot plot of the results.</p>
+            <p>Local hypergeometric test against a background you explicitly define, or an opt-in live query against g:Profiler's curated GO/KEGG/Reactome databases. Plus a dot plot of the results.</p>
           </div>
           <div class="capability">
             <h3>Optional AI summary</h3>
@@ -287,7 +287,7 @@ result["discordant_genes"]                  # []</span>
           </div>
           <div class="capability">
             <h3>GMT / MSigDB gene sets</h3>
-            <p>Load standard pathway files directly — no hand-converting to a Python dict.</p>
+            <p>Load standard pathway files directly. No hand-converting to a Python dict.</p>
           </div>
           <div class="capability">
             <h3>Command-line interface</h3>
@@ -295,7 +295,7 @@ result["discordant_genes"]                  # []</span>
           </div>
           <div class="capability">
             <h3>Gene symbol annotation</h3>
-            <p>Attach readable gene names from a local mapping file. No live API call, original IDs untouched.</p>
+            <p>Attach readable gene names from a local mapping file. No live API call. Original IDs untouched.</p>
           </div>
           <div class="capability">
             <h3>GEO data acquisition</h3>
@@ -311,17 +311,17 @@ result["discordant_genes"]                  # []</span>
         <div class="section-head">
           <span class="eyebrow">In practice</span>
           <h2>Real output, from real code.</h2>
-          <p>The plots below came out of an actual <code>deconcord</code> CLI run on a synthetic 4,000-gene dataset — same command, same defaults you'd run yourself.</p>
+          <p>The plots below came out of an actual <code>deconcord</code> CLI run on a synthetic 4,000-gene dataset. Same command, same defaults you'd run yourself.</p>
         </div>
 
         <div class="output-grid">
           <figure class="figure">
             <img src="assets/volcano-demo.png" alt="Volcano plot generated by DEConcord: log fold change on the x-axis, -log10 adjusted p-value on the y-axis, significant genes highlighted." loading="lazy" />
-            <figcaption>Volcano plot — every point is a gene DEConcord actually tested, not a mockup.</figcaption>
+            <figcaption>Volcano plot. Every point is a gene DEConcord actually tested, not a mockup.</figcaption>
           </figure>
           <figure class="figure">
             <img src="assets/pca-demo.png" alt="PCA plot generated by DEConcord showing control and treated samples separating along the first principal component." loading="lazy" />
-            <figcaption>PCA — check whether your samples separate the way your experiment says they should, before you trust anything downstream.</figcaption>
+            <figcaption>PCA. Check whether your samples separate the way your experiment says they should, before you trust anything downstream.</figcaption>
           </figure>
         </div>
       </div>
@@ -333,7 +333,7 @@ result["discordant_genes"]                  # []</span>
         <div class="section-head">
           <span class="eyebrow">Infrastructure benchmark</span>
           <h2>DEConcord's own DE method, checked against DESeq2 and edgeR.</h2>
-          <p>A different question from the concordance numbers above: not "how much do DESeq2 and edgeR agree with each other," but "how close is DEConcord's own from-scratch DE implementation to either one." Real DESeq2 and real edgeR, both run with their own default settings, on the <code>airway</code> dataset — the same one DESeq2's own vignette uses. Methodology and full write-up in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+          <p>A different question from the concordance numbers above: not "how much do DESeq2 and edgeR agree with each other," but "how close is DEConcord's own from-scratch DE implementation to either one." Real DESeq2 and real edgeR, both run with their own default settings, on the <code>airway</code> dataset, the same one DESeq2's own vignette uses. Methodology and full write-up in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
         </div>
 
         <div class="stat-row">
@@ -343,28 +343,28 @@ result["discordant_genes"]                  # []</span>
           </div>
           <div class="stat">
             <span class="stat-value">1.0</span>
-            <span class="stat-label">Precision — every gene DEConcord calls significant, both tools also call significant</span>
+            <span class="stat-label">Precision: every gene DEConcord calls significant, both tools also call significant</span>
           </div>
           <div class="stat">
             <span class="stat-value">0.08 / 0.10</span>
-            <span class="stat-label">Recall — the real, quantified cost of a per-gene test vs. models that borrow power across genes</span>
+            <span class="stat-label">Recall: the real, quantified cost of a per-gene test vs. models that borrow power across genes</span>
           </div>
         </div>
 
         <div class="output-grid">
           <figure class="figure">
             <img src="assets/benchmark-deseq2.png" alt="Scatter plot comparing DEConcord's log fold change against DESeq2's on the airway dataset, Pearson r = 0.938." loading="lazy" />
-            <figcaption>DEConcord vs. DESeq2 — 16,139 genes in common, r = 0.938.</figcaption>
+            <figcaption>DEConcord vs. DESeq2. 16,139 genes in common, r = 0.938.</figcaption>
           </figure>
           <figure class="figure">
             <img src="assets/benchmark-edger.png" alt="Scatter plot comparing DEConcord's log fold change against edgeR's on the airway dataset, Pearson r = 0.947." loading="lazy" />
-            <figcaption>DEConcord vs. edgeR — 15,890 genes in common, r = 0.947.</figcaption>
+            <figcaption>DEConcord vs. edgeR. 15,890 genes in common, r = 0.947.</figcaption>
           </figure>
         </div>
 
-        <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and DEConcord's default exploratory method doesn't. It also never flagged a gene neither of them agreed with. Fast first look, not a final answer — same conclusion the README has stated all along, now with a number attached to it.</p>
-        <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). DEConcord also has an opt-in empirical-Bayes moderated t-test that does borrow across genes — on this same real dataset, it found more than double the significant genes (196 → 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade; both numbers are real and both are in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
-        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code> — <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't: with the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too — precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and DEConcord's default exploratory method doesn't. It also never flagged a gene neither of them agreed with. It's a fast first look, not a final answer. Same conclusion the README has stated all along, now with a number attached to it.</p>
+        <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). DEConcord also has an opt-in empirical-Bayes moderated t-test that does borrow across genes. On this same real dataset, it found more than double the significant genes (196 to 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade. Both numbers are real and both are in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+        <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code>, <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't. With the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too: precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
       </div>
     </section>
 
@@ -398,11 +398,11 @@ result["discordant_genes"]                  # []</span>
 
           <p>
             So DEConcord is currently focused on making those failure modes
-            loud, testable, and difficult to ignore — one function, one broken
+            loud, testable, and difficult to ignore, one function, one broken
             test, and one increasingly specific error message at a time.
           </p>
 
-          <p class="why-signoff">Every decision behind the code — what shipped, what broke, what got rejected — is written down in <a href="https://github.com/nezihcandikme/DeConcord/blob/main/DEVLOG.md" target="_blank" rel="noopener" class="link-accent">DEVLOG.md</a>.</p>
+          <p class="why-signoff">Every decision behind the code, what shipped, what broke, what got rejected, is written down in <a href="https://github.com/nezihcandikme/DeConcord/blob/main/DEVLOG.md" target="_blank" rel="noopener" class="link-accent">DEVLOG.md</a>.</p>
         </div>
       </div>
     </section>
@@ -442,7 +442,7 @@ result["discordant_genes"]                  # []</span>
           <li><a href="https://github.com/nezihcandikme/DeConcord/blob/main/DEVLOG.md" target="_blank" rel="noopener">Devlog</a></li>
         </ul>
       </div>
-      <p class="footer-note">&copy; <span id="year">2026</span> Nezih Can Dikme. DEConcord is an educational project — not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>
+      <p class="footer-note">&copy; <span id="year">2026</span> Nezih Can Dikme. DEConcord is an educational project, not a replacement for DESeq2, edgeR, or a bioinformatician who has seen your experimental design.</p>
     </div>
   </footer>
 
