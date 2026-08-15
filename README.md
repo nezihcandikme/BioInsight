@@ -10,7 +10,7 @@ Most RNA-seq workflows report the significant genes or pathways from one analysi
 
 It's not a DESeq2/edgeR replacement, and it's not trying to be. Running its own differential expression isn't the main job. DEConcord takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
 
-**Status**: early, pre-1.0 (v0.13.2), under active development. The core method-concordance question is implemented and checked against real data (see [Validation](#validation)). Threshold sensitivity, pathway stability, and resampling stability are on the [roadmap](#roadmap) and not built yet.
+**Status**: early, pre-1.0 (v0.14.0), under active development. Method concordance, threshold sensitivity, and pathway stability are implemented; method concordance is checked against real data (see [Validation](#validation)). Resampling stability is on the [roadmap](#roadmap) and not built yet.
 
 ## Quick start
 
@@ -76,9 +76,9 @@ DE result tables (DESeq2, edgeR, ...)
         ↓
 method concordance          ← built (compute_de_concordance)
         ↓
-threshold sensitivity       ← not built yet
+threshold sensitivity       ← built (compute_threshold_sensitivity)
         ↓
-pathway enrichment + pathway stability   ← enrichment exists as infrastructure; stability not built yet
+pathway enrichment + pathway stability   ← built (compute_pathway_stability)
         ↓
 resampling / stability analysis          ← not built yet
         ↓
@@ -87,7 +87,11 @@ robustness assessment                    ← not built yet
 interpretable report                     ← not built yet
 ```
 
-**Built today**: `deconcord.concordance.methods.compute_de_concordance`. Given two DE result tables for the same comparison, it computes the overlap and Jaccard index of their significant-gene calls, the Pearson and Spearman correlation of log fold change across every gene both tables tested, directional agreement (among genes significant in both, the fraction that agree on the sign of the effect), and explicit concordant, discordant, and method-specific gene lists. See `benchmarks/method_concordance.py` for a real run against real DESeq2/edgeR output.
+**Built today**:
+
+- `deconcord.concordance.methods.compute_de_concordance`. Given two DE result tables for the same comparison, it computes the overlap and Jaccard index of their significant-gene calls, the Pearson and Spearman correlation of log fold change across every gene both tables tested, directional agreement (among genes significant in both, the fraction that agree on the sign of the effect), and explicit concordant, discordant, and method-specific gene lists. See `benchmarks/method_concordance.py` for a real run against real DESeq2/edgeR output.
+- `deconcord.concordance.threshold_sensitivity.compute_threshold_sensitivity`. Sweeps `compute_de_concordance` across a range of significance thresholds (`alpha` values) between the same two tables, so you can see whether a concordance conclusion holds up across a reasonable range of cutoffs or is an artifact of the particular threshold checked. Reports both an alpha-by-alpha summary and, per gene, what fraction of the swept thresholds call it significant in each table.
+- `deconcord.concordance.pathway_stability.compute_pathway_stability`. The same overlap-and-Jaccard idea, applied to two pathway enrichment result tables instead of two DE tables. Answers "does this pathway stay enriched regardless of which DE method or threshold produced the significant-gene list," rather than "does this gene stay significant."
 
 **Everything else is infrastructure, not the identity.** It's what's left of the original bulk RNA-seq pipeline. It's kept because it's useful (it's how the `benchmarks/` DE result tables get generated, and it's a future source of a third method to check for concordance), not because DEConcord is trying to be a general-purpose RNA-seq toolkit:
 
@@ -126,11 +130,12 @@ Precision is the fraction of genes DEConcord's own method calls significant that
 
 ## Limitations
 
-- Method concordance today is pairwise, one fixed threshold at a time (default `alpha=0.05`). Threshold sensitivity, whether a conclusion survives `alpha=0.01` vs `alpha=0.1`, isn't built yet.
-- No pathway-stability or resampling/bootstrap analysis yet. Both are on the roadmap, not implemented.
+- `compute_de_concordance` itself is still pairwise, one fixed threshold at a time (default `alpha=0.05`). `compute_threshold_sensitivity` covers checking a range of thresholds, but it's a separate function you call in addition, not something the base comparison does automatically.
+- No resampling/bootstrap stability analysis yet. It's on the roadmap, not implemented.
 - The robustness and concordance metrics so far are standard, well-understood ones: Jaccard, Pearson/Spearman correlation, directional agreement. No new statistical method has been invented, deliberately. See the roadmap.
 - Concordance findings so far come from two datasets (`airway`, `pasilla`), both standard two-group designs. Whether DESeq2/edgeR concordance holds up on unbalanced groups, batch effects, or more complex designs hasn't been checked.
 - The underlying DE infrastructure (validation, QC, DE, enrichment) still only supports two-group condition comparisons, with optional covariate adjustment. No paired samples, no more than two condition levels.
+- Pathway stability only compares presence/absence of significance between two enrichment tables. It has no way to detect that the two tables were built on different gene-set collections or background universes, which would make the comparison meaningless even though the function runs without error. See `METHODOLOGY.md`.
 
 ## Reproducibility
 
@@ -138,11 +143,11 @@ Every CLI run writes a `run_metadata.json`: DEConcord version, Python version, c
 
 ## Roadmap
 
-**Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables. Overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
+**Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
 
-**Next**: threshold sensitivity, checking which findings disappear under small, reasonable changes to the FDR or log2FC cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings, or is itself method-sensitive.
+**Next**: resampling stability (bootstrap, subsampling, leave-one-out) to see how consistently a gene or pathway reappears across resamples of the same data, not just across analytical choices.
 
-**Later**: resampling stability (bootstrap, subsampling, leave-one-out) to see how consistently a gene or pathway reappears. A scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. Richer interpretation and reporting.
+**Later**: a scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. A stress-test benchmark suite (a third DE tool, harder data regimes: unbalanced groups, batch effects, low counts) to check how concordance behaves outside the two clean two-group datasets checked so far. Richer interpretation and reporting.
 
 No dates. This project moves at whatever pace it moves at, and a roadmap with fake deadlines is worse than one without.
 

@@ -105,28 +105,113 @@ neither was told about). Concordance measures agreement between the
 methods actually checked, not agreement with ground truth — there usually
 isn't ground truth available for a real RNA-seq experiment.
 
-## Threshold sensitivity, pathway stability, resampling stability
+## Threshold sensitivity
+
+Implemented in `deconcord.concordance.threshold_sensitivity.compute_threshold_sensitivity`.
+Sweeps `compute_de_concordance` above across a range of `alpha` values
+between the same two DE result tables, to check whether the concordance
+conclusion depends on which threshold in that range was picked.
+
+### What it computes
+
+For each `alpha` in a supplied list (default `(0.01, 0.05, 0.1)`), runs
+`compute_de_concordance` at that threshold and collects the summary
+metrics (`jaccard_index`, `significant_in_both`, `directional_agreement`,
+etc.) into a table indexed by alpha (`by_alpha`). Log fold change
+correlation isn't included there since it doesn't depend on alpha at
+all — it's computed across every compared gene, not just the significant
+ones, so it would just repeat the same number on every row.
+
+Separately, for each gene, computes what fraction of the swept alphas
+call it significant in each table (`gene_stability`). A fraction of 1.0
+means the gene is significant at every threshold tried; 0.0 means it's
+significant at none of them. Either extreme means the gene's own
+significance call doesn't depend on which threshold in the swept range
+was used — it's threshold-stable. Anything strictly between 0 and 1
+means the call flips somewhere in the range: whether that gene counts as
+a "finding" in that table depends on an arbitrary choice, not just on
+the data.
+
+A gene is reported as `stable` only if *both* fractions (in table A and
+in table B) are 0.0 or 1.0. This is a statement about each table's own
+sensitivity to threshold choice, not about whether the two tables agree
+with each other — a gene that's significant at every alpha in table A
+and non-significant at every alpha in table B is threshold-stable (its
+status doesn't waver with the threshold) even though the two tables
+disagree about it. Threshold stability and method concordance are
+different questions; conflating them would hide genes whose disagreement
+is a real, consistent disagreement rather than a borderline call.
+
+### Interpretation
+
+A gene significant across the whole swept range in both tables is a
+stronger finding than one that's only significant at the loosest
+threshold in one table — the latter is one threshold change away from
+disappearing from the "significant" list entirely. A high `jaccard_index`
+at every swept alpha means the two tables' agreement isn't an artifact of
+having picked exactly 0.05; a `jaccard_index` that swings a lot across
+the range means the agreement number itself shouldn't be quoted without
+saying which threshold it's at.
+
+The range swept is still a choice. `(0.01, 0.05, 0.1)` is a reasonable
+default spread around the conventional cutoff, not a claim that
+everything outside it is unreasonable — a caller checking a genuinely
+different convention (e.g. a stricter Bonferroni-style threshold) should
+pass their own `alphas`.
+
+## Pathway stability
+
+Implemented in `deconcord.concordance.pathway_stability.compute_pathway_stability`.
+The same overlap-and-Jaccard idea as method concordance's significant-gene
+comparison, applied to two pathway enrichment result tables instead of
+two gene-level DE result tables.
+
+### What it computes
+
+Given two enrichment tables (e.g. one from a DE run using Welch's t-test,
+another from the same data using the moderated t-test — or one from
+DESeq2's significant genes, one from edgeR's), restricts to pathways
+tested in both, calls a pathway significant in a table if its p-value is
+below `alpha` (default 0.05), and reports the significant-pathway
+overlap and Jaccard index, plus explicit `stable_pathways` (significant
+in both) and `only_in_<name>` lists.
+
+This is deliberately narrower than method concordance. There's no
+directional-agreement or fold-change-correlation analogue here, because
+pathway enrichment tables don't have a shared, comparable effect-size
+column the way DE tables share log fold change — local enrichment
+reports an overlap count against whatever background was supplied, live
+g:Profiler reports an intersection size against its own background, and
+the two aren't on the same scale. Comparing presence/absence of
+significance is the part that's actually well-defined across both
+sources.
+
+### Interpretation
+
+A pathway enriched under every DE configuration checked is a more
+robust biological conclusion than one that only shows up under one
+specific choice of DE method or threshold — the latter could be a real,
+subtle effect that only one method has the power to detect, or it could
+be noise that happened to clear one method's particular threshold.
+Pathway stability doesn't distinguish between those two explanations by
+itself; it only tells you which case you're in, so you know whether
+further investigation is warranted.
+
+Pathway-level (in)stability inherits every uncertainty already present
+in the gene-level DE calls and the enrichment step's own background
+choice — see [Limitations](#limitations-of-this-methodology) below.
+
+## Resampling stability
 
 Not implemented yet (see the README's Roadmap). Documented here in
-advance of building them so the definitions get written down before the
-code, not reverse-engineered from it afterward:
+advance of building it so the definition gets written down before the
+code, not reverse-engineered from it afterward.
 
-- **Threshold sensitivity** will re-run the concordance computation above
-  across a range of `alpha` (and/or log fold change) cutoffs, to
-  distinguish findings that are robust across a reasonable range of
-  thresholds from ones that appear or vanish with a small change to
-  either.
-- **Pathway stability** will check whether a pathway enriched under one
-  DE result stays enriched under another (a different method, a different
-  threshold), to distinguish pathway-level conclusions that are
-  method-sensitive from ones that aren't.
-- **Resampling stability** will use bootstrap/subsampling/leave-one-out
-  resampling of the same underlying samples to measure how consistently a
-  gene or pathway's significance call reappears, as a check on how much a
-  given conclusion depends on the exact sample set at hand versus being a
-  broadly reproducible signal.
-
-None of these are implemented; this section is a specification, not a
+Will use bootstrap, subsampling, or leave-one-out resampling of the same
+underlying samples to measure how consistently a gene or pathway's
+significance call reappears, as a check on how much a given conclusion
+depends on the exact sample set at hand versus being a broadly
+reproducible signal. Not implemented; this is a specification, not a
 report of results.
 
 ## Limitations of this methodology
@@ -136,10 +221,11 @@ report of results.
   different experiments isn't meaningful and isn't guarded against beyond
   requiring overlapping gene IDs — the caller is responsible for making
   sure the comparison itself makes sense.
-- Significance is evaluated at one threshold at a time (no threshold
-  sensitivity yet), so "concordant" and "discordant" gene sets are
-  specific to whatever `alpha` was passed, not a threshold-independent
-  property of the data.
+- `compute_de_concordance` itself still evaluates significance at one
+  threshold at a time; `concordant_genes`/`discordant_genes` from that
+  function are specific to whatever `alpha` was passed. Threshold
+  sensitivity (above) is a separate function you call in addition, not
+  something `compute_de_concordance` does automatically.
 - Small sample sizes reduce the reliability of everything downstream of
   them (the p-values and fold changes being compared, not the concordance
   computation itself) — a low-power comparison can look either falsely
@@ -147,11 +233,13 @@ report of results.
   discordant (both near their own significance boundary in opposite
   directions by chance). Concordance numbers should be read alongside the
   sample size and effect sizes involved, not in isolation.
-- Pathway enrichment (used by the underlying infrastructure, not yet by
-  any stability metric) depends entirely on the gene-set database and
+- Pathway enrichment depends entirely on the gene-set database and
   background gene universe supplied — a pathway's enrichment status can
   change with either, independent of anything about the DE methods being
-  compared.
+  compared. Pathway stability inherits this: two enrichment tables built
+  on different backgrounds or gene-set collections aren't measuring the
+  same thing, and `compute_pathway_stability` has no way to detect that
+  from the tables alone.
 - Technical confounding (batch effects, subtle covariates) cannot always
   be detected automatically. DEConcord's covariate-adjustment feature
   (see the README) can *correct for* a known, measured confound, but

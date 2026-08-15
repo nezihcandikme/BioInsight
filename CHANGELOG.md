@@ -9,6 +9,26 @@ This file is user-facing: what changed and what it means for you. For the
 reasoning behind each decision, including rejected alternatives, see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.14.0] — 2026-08-15
+
+### Added
+- `deconcord.concordance.threshold_sensitivity.compute_threshold_sensitivity`.
+  Sweeps `compute_de_concordance` across a range of significance
+  thresholds (`alpha`) between two DE result tables. Returns an
+  alpha-by-alpha summary table plus, per gene, what fraction of the
+  swept thresholds call it significant in each table, so a threshold-
+  sensitive finding (significant only at some cutoffs) is distinguished
+  from a threshold-stable one.
+- `deconcord.concordance.pathway_stability.compute_pathway_stability`.
+  Compares two pathway enrichment result tables the same way method
+  concordance compares two DE tables: significant-pathway overlap and
+  Jaccard index, plus explicit stable/method-specific pathway lists.
+- Both functions are exported from the top-level `deconcord` package
+  (`dc.compute_threshold_sensitivity`, `dc.compute_pathway_stability`).
+- `METHODOLOGY.md`: full documentation for both new functions (what they
+  compute, how to interpret the output, limitations), replacing the
+  previous "not implemented yet" placeholder for these two.
+
 ## [0.13.2] — 2026-08-14
 
 ### Changed

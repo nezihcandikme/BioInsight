@@ -40,3 +40,6 @@ Thumbs.db
 /benchmarks/data/
 /benchmarks/results/*_results.csv
 /examples/output/
+
+# Personal notes -- not part of the public repo
+/NOTES_FOR_NEZIH.md
