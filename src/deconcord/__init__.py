@@ -23,6 +23,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from deconcord.concordance.methods import compute_de_concordance
 from deconcord.concordance.pathway_stability import compute_pathway_stability
+from deconcord.concordance.resampling_stability import compute_resampling_stability
 from deconcord.concordance.threshold_sensitivity import compute_threshold_sensitivity
 from deconcord.differential_expression.methods import (
     run_differential_expression,
@@ -44,6 +45,7 @@ __all__ = [
     "compute_cpm",
     "compute_de_concordance",
     "compute_pathway_stability",
+    "compute_resampling_stability",
     "compute_threshold_sensitivity",
     "load_count_matrix",
     "log2_transform",

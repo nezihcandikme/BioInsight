@@ -203,16 +203,58 @@ choice — see [Limitations](#limitations-of-this-methodology) below.
 
 ## Resampling stability
 
-Not implemented yet (see the README's Roadmap). Documented here in
-advance of building it so the definition gets written down before the
-code, not reverse-engineered from it afterward.
+Implemented in `deconcord.concordance.resampling_stability.compute_resampling_stability`.
+Method concordance, threshold sensitivity, and pathway stability all ask
+whether a conclusion survives a different reasonable *analytical* choice.
+Resampling stability asks whether it survives a different *sample set*:
+does a gene's significance call hold up if the analysis had happened to
+include (or exclude) one particular sample?
 
-Will use bootstrap, subsampling, or leave-one-out resampling of the same
-underlying samples to measure how consistently a gene or pathway's
-significance call reappears, as a check on how much a given conclusion
-depends on the exact sample set at hand versus being a broadly
-reproducible signal. Not implemented; this is a specification, not a
-report of results.
+### What it computes
+
+Runs `run_differential_expression` once on the full sample set (the
+baseline), then reruns it many times on perturbed sample sets, and
+reports what fraction of reruns still call each gene significant. Two
+resampling schemes are offered:
+
+- `"subsample"`: repeatedly draws a random subset of each group (without
+  replacement) and reruns DE. Randomized (seeded via `random_state`);
+  needs enough iterations for the per-gene fractions to be meaningful.
+- `"leave_one_out"`: drops each sample exactly once and reruns DE.
+  Deterministic and exhaustive, but a gentler, more limited perturbation
+  than subsampling, and the iteration count is fixed at the sample count.
+
+Bootstrap resampling (drawing samples *with* replacement) is deliberately
+not offered. `run_differential_expression` refuses a group with a
+repeated sample name, on purpose, to catch a real class of caller bugs.
+A bootstrap draw routinely produces repeats, and supporting it would mean
+reworking how the DE functions index into the expression matrix to
+tolerate duplicates — a bigger change than this function's scope
+justifies. Subsampling and leave-one-out give the same "how much does
+the exact sample set matter" signal without that rework.
+
+A gene's significance call is `stable` if it reappears in at least
+`stability_threshold` (default 0.9) of reruns when the baseline called it
+significant, or in at most `1 - stability_threshold` of reruns when the
+baseline didn't. Everything else is `sensitive`: baseline-significant
+genes that don't reliably replicate, which is the case worth the closest
+look.
+
+### Interpretation
+
+A gene significant in the baseline and in nearly every resampled rerun
+is a broadly reproducible signal, not an artifact of which samples
+happened to be collected. A gene significant in the baseline but only
+sometimes in reruns is a much weaker finding — it may be real but
+underpowered, or it may be driven by one or two samples. Resampling
+stability doesn't tell you which; it tells you the call is fragile and
+worth a closer look at the individual samples before treating it as
+settled.
+
+This is a per-gene diagnostic, not a whole-dataset one. A dataset can
+have many stable genes and a handful of sensitive ones; the fragile genes
+are the ones this function exists to surface, not a verdict on the
+dataset as a whole.
 
 ## Limitations of this methodology
 
@@ -245,6 +287,13 @@ report of results.
   (see the README) can *correct for* a known, measured confound, but
   concordance between two methods that share the same *unmeasured*
   confound will not reveal it.
+- `compute_resampling_stability`'s `"subsample"` mode and default
+  `stability_threshold` of 0.9 are both choices, not laws — a smaller
+  `subsample_fraction` is a harsher perturbation and will flag more genes
+  as sensitive, and a lower `stability_threshold` will flag fewer. A
+  dataset with very few samples per group has little room to subsample
+  from in the first place, which limits how informative the result can
+  be regardless of settings.
 - None of this establishes biological causality. RNA-seq differential
   expression, however robust or concordant across methods, is
   observational — a stable, method-independent finding is a stronger

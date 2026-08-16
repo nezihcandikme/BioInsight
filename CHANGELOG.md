@@ -9,6 +9,26 @@ This file is user-facing: what changed and what it means for you. For the
 reasoning behind each decision, including rejected alternatives, see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.15.0] — 2026-08-16
+
+### Added
+- `deconcord.concordance.resampling_stability.compute_resampling_stability`.
+  Reruns differential expression on perturbed sample sets (random
+  subsamples or exhaustive leave-one-out) and reports, per gene, what
+  fraction of reruns still call it significant, compared against the
+  full-data baseline call. Returns a summary (baseline replication rate,
+  mean Jaccard to the baseline significant-gene set) plus a per-gene
+  stability table and explicit stable/sensitive gene lists.
+- Exported from the top-level `deconcord` package
+  (`dc.compute_resampling_stability`).
+- `METHODOLOGY.md`: full documentation for resampling stability,
+  replacing the previous "not implemented yet" placeholder.
+
+### Changed
+- Bootstrap resampling (sampling with replacement) is deliberately not
+  offered, since it would need reworking how the DE functions index
+  samples. Documented as a scope decision, not an oversight.
+
 ## [0.14.0] — 2026-08-15
 
 ### Added

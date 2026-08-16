@@ -52,7 +52,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">Differential expression concordance · v0.14.0</span>
+        <span class="eyebrow">Differential expression concordance · v0.15.0</span>
         <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
         <p class="lede">
           DEConcord takes DE result tables (DESeq2, edgeR, or anything with
@@ -256,6 +256,10 @@ result["discordant_genes"]                  # []</span>
           <div class="capability">
             <h3>Pathway stability</h3>
             <p>The same overlap-and-Jaccard comparison as method concordance, applied to two pathway enrichment tables. Does a pathway stay enriched across DE methods, or is the pathway-level conclusion itself method-sensitive.</p>
+          </div>
+          <div class="capability">
+            <h3>Resampling stability</h3>
+            <p>Reruns differential expression on subsampled or leave-one-out sample sets. Tells you whether a gene's significance call is a broadly reproducible signal or an artifact of which samples happened to be collected.</p>
           </div>
           <div class="capability">
             <h3>Validation with specifics</h3>
