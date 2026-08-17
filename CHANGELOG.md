@@ -9,6 +9,25 @@ This file is user-facing: what changed and what it means for you. For the
 reasoning behind each decision, including rejected alternatives, see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.16.0] — 2026-08-17
+
+### Added
+- `deconcord concordance results_a.csv results_b.csv` CLI subcommand.
+  Wraps `compute_de_concordance` directly: point it at two existing DE
+  result table CSVs and it writes `summary.json`, `merged.csv`, and
+  separate CSVs for the concordant, discordant, and method-specific
+  gene lists, without running the pipeline first. Configurable gene ID,
+  log fold change, and p-value column names, same as the Python
+  function.
+- Writes a `run_metadata.json` for the concordance subcommand, matching
+  the existing pipeline CLI's reproducibility record.
+
+### Changed
+- The original `deconcord counts.csv --group1 ... --group2 ...`
+  invocation is unchanged. `concordance` is checked for as the first
+  argument; anything else falls through to the original pipeline
+  behavior, so no existing script or command breaks.
+
 ## [0.15.0] — 2026-08-16
 
 ### Added

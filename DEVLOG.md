@@ -336,3 +336,26 @@ Decisions rejected along the way:
 - **Defaulting `resample_method` to `"leave_one_out"`** instead of `"subsample"`. Leave-one-out is deterministic and needs no `random_state`, which sounds like the safer default. Rejected because it's also a much gentler perturbation (only ever drops one sample, and only from one group at a time), and a small dataset's leave-one-out run can look artificially stable just because dropping a single sample rarely moves a group mean much. Subsampling, drawing a smaller group each time, is a more informative default stress test, at the cost of needing enough iterations and a random seed for reproducibility.
 
 Version bump: 0.14.0 to 0.15.0.
+
+---
+
+## Aug 17: a CLI subcommand for concordance (v0.16.0)
+
+The roadmap's "Later" bucket has had "a CLI subcommand for the concordance functions, once there's more than one interface question to answer than 'run the pipeline on one count matrix'" sitting in it since the resampling stability entry above. There are now three concordance functions and a stable core one (`compute_de_concordance`), so the interface question has an actual answer. Built `deconcord concordance results_a.csv results_b.csv`, a thin CLI wrapper around `compute_de_concordance`.
+
+**The one real design decision: don't touch the existing CLI shape.** The original invocation, `deconcord counts.csv --group1 ... --group2 ...`, has no subcommand name at all, it's a bare positional argument. Making `concordance` a real argparse subparser the conventional way would mean introducing a `run` subcommand too and breaking every existing invocation of that bare form, including the one in this project's own README, CI, and roughly twenty existing CLI tests. Pre-1.0 SemVer would allow that kind of breaking change in a minor bump, the CHANGELOG says so explicitly, but "allowed" isn't the same as "worth doing for its own sake." Instead, `main()` checks whether the first argument is literally the string `"concordance"` and dispatches to the new code path if so; anything else falls through to the original, completely untouched `_run()`. Cheaper, and every existing test and script keeps working exactly as it did.
+
+The one honest cost of that choice, documented in the module docstring: a count matrix file literally named `concordance` would get misread as the subcommand instead of a file path. Rare enough not to be worth a heavier parser for.
+
+**What the subcommand writes.** Same reproducibility convention as the pipeline CLI: a `run_metadata.json` with version, timestamp, and every parameter used. Plus `summary.json` (the flat metrics dict), `merged.csv` (every compared gene, both tables' values side by side, gene ID as an explicit column instead of a bare index), and one CSV each for `concordant_genes`, `discordant_genes`, and `only_in_<name>` for both tables. Column names (`--lfc-col-a`, `--pvalue-col-a`, etc.) and the gene ID column (`--gene-id-col-a`, default: first column in the file) are all configurable, mirroring `compute_de_concordance`'s own parameters, since a DESeq2 CSV and an edgeR CSV don't share column names and neither should have to be renamed just to be compared from the terminal.
+
+Added two small CSV fixtures (`tests/fixtures/concordance_a.csv`, `concordance_b.csv`, four genes with known, by-hand-computed concordance numbers) plus a DESeq2-style-column variant, so the CLI tests check real, specific numbers (jaccard = 2/3, two concordant genes, zero discordant) rather than just "it ran without crashing." 14 new tests, including one explicit regression test confirming the bare pipeline invocation is untouched.
+
+Test count: 219 to 233.
+
+Decisions rejected along the way:
+
+- **A proper `run`/`concordance` subparser split.** The conventional argparse way to do this. Rejected because it breaks the existing bare invocation for no functional gain, "conventional" isn't a strong enough reason to break every script anyone's already written against this CLI.
+- **CLI subcommands for threshold sensitivity and pathway stability at the same time.** Both take two input tables and a handful of parameters like `compute_de_concordance` does, so it'd be easy to add both now. Rejected for this pass: better to see whether the `concordance` subcommand's actual shape (flag names, output file layout) holds up once it's been used, instead of locking in three CLI surfaces on the same untested guess about what shape is right.
+
+Version bump: 0.15.0 to 0.16.0.

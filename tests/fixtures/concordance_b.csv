@@ -1,0 +1,5 @@
+gene_id,log_fold_change,adjusted_p_value
+g1,2.2,0.002
+g2,1.6,0.5
+g3,0.05,0.6
+g4,-1.8,0.003

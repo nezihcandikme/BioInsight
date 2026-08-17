@@ -1,16 +1,38 @@
 """
 Command-line entry point for DEConcord.
 
-This wraps ``deconcord.pipeline.run_analysis`` so the pipeline can be run
-without writing a Python script: point it at a count matrix CSV, name your
-two groups, and it writes the differential expression table (and, if asked,
-plots and a pathway enrichment table) to an output directory.
+Two things live here:
 
-It is deliberately a thin wrapper. All the actual logic -- validation, QC,
-filtering, normalization, DE, enrichment -- lives in the library modules;
-this module's only job is argument parsing, wiring, and turning exceptions
-that are expected to happen on bad input (a missing file, an unknown sample
-name, a malformed GMT file) into a clean error message instead of a
+- The default invocation, ``deconcord counts.csv --group1 ... --group2
+  ...``, wraps ``deconcord.pipeline.run_analysis``: point it at a count
+  matrix CSV, name your two groups, and it writes the differential
+  expression table (and, if asked, plots and a pathway enrichment table)
+  to an output directory. This is the original CLI shape and it is
+  unchanged.
+- ``deconcord concordance results_a.csv results_b.csv`` wraps
+  ``deconcord.concordance.methods.compute_de_concordance``: point it at
+  two existing DE result tables (from DESeq2, edgeR, DEConcord's own
+  output, anything with a gene ID, a log fold change, and a p-value) and
+  it writes the comparison to an output directory, without running any
+  pipeline stage first.
+
+There's no subcommand named "run", on purpose. Adding one would mean every
+existing invocation of the form ``deconcord counts.csv ...`` breaks and
+needs a new "run" prefix, which is exactly the kind of gratuitous breaking
+change this project tries to avoid even though pre-1.0 SemVer would allow
+it. Instead, ``concordance`` is the one explicit subcommand name, checked
+for as the first argument; anything else falls through to the original,
+untouched pipeline behavior. The one real cost of this: a count matrix
+literally named ``concordance`` (or ``concordance.csv`` passed without an
+extension check) would be misread as the subcommand instead of a file
+path. Rare enough in practice not to be worth a more complex parser for.
+
+Both paths are deliberately thin wrappers. All the actual logic --
+validation, QC, filtering, normalization, DE, enrichment, concordance --
+lives in the library modules; this module's only job is argument parsing,
+wiring, and turning exceptions that are expected to happen on bad input (a
+missing file, an unknown sample name, a malformed GMT file, a missing
+column in a results table) into a clean error message instead of a
 traceback.
 """
 
@@ -26,6 +48,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from deconcord.concordance.methods import compute_de_concordance
 from deconcord.io.counts import CountMatrixError
 from deconcord.pathway_analysis.gmt import load_gmt
 from deconcord.pipeline import run_analysis
@@ -229,10 +252,111 @@ def _run(argv: list[str]) -> int:
     return 0
 
 
+def build_concordance_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="deconcord concordance",
+        description="Compare two existing DE result tables with compute_de_concordance, "
+                     "without running the pipeline first.",
+    )
+    parser.add_argument("results_a", help="Path to the first DE result table CSV.")
+    parser.add_argument("results_b", help="Path to the second DE result table CSV.")
+    parser.add_argument("--name-a", default="method_a", help="Label for the first table. Default 'method_a'.")
+    parser.add_argument("--name-b", default="method_b", help="Label for the second table. Default 'method_b'.")
+    parser.add_argument(
+        "--gene-id-col-a",
+        help="Column in results_a to use as the gene ID. Defaults to the first column in the file.",
+    )
+    parser.add_argument(
+        "--gene-id-col-b",
+        help="Column in results_b to use as the gene ID. Defaults to the first column in the file.",
+    )
+    parser.add_argument("--lfc-col-a", default="log_fold_change", help="Log fold change column in results_a. Default 'log_fold_change'.")
+    parser.add_argument("--pvalue-col-a", default="adjusted_p_value", help="Adjusted p-value column in results_a. Default 'adjusted_p_value'.")
+    parser.add_argument("--lfc-col-b", default="log_fold_change", help="Log fold change column in results_b. Default 'log_fold_change'.")
+    parser.add_argument("--pvalue-col-b", default="adjusted_p_value", help="Adjusted p-value column in results_b. Default 'adjusted_p_value'.")
+    parser.add_argument("--alpha", type=float, default=0.05, help="Adjusted p-value cutoff for significance. Default 0.05.")
+    parser.add_argument("--out", default="deconcord_concordance_output", help="Output directory. Default 'deconcord_concordance_output'.")
+    return parser
+
+
+def _load_results_table(path: str, gene_id_col: str | None) -> pd.DataFrame:
+    # A caller-given column name is used as-is; with no column named,
+    # falling back to the first column (index_col=0) matches how
+    # DEConcord's own DE output and a plain df.to_csv() from DESeq2/edgeR
+    # both write their gene ID column, without forcing a specific name.
+    if gene_id_col is not None:
+        return pd.read_csv(path, index_col=gene_id_col)
+    return pd.read_csv(path, index_col=0)
+
+
+def _run_concordance(argv: list[str]) -> int:
+    parser = build_concordance_parser()
+    args = parser.parse_args(argv)
+
+    results_a = _load_results_table(args.results_a, args.gene_id_col_a)
+    results_b = _load_results_table(args.results_b, args.gene_id_col_b)
+
+    result = compute_de_concordance(
+        results_a, results_b,
+        name_a=args.name_a, name_b=args.name_b,
+        lfc_col_a=args.lfc_col_a, pvalue_col_a=args.pvalue_col_a,
+        lfc_col_b=args.lfc_col_b, pvalue_col_b=args.pvalue_col_b,
+        alpha=args.alpha,
+    )
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    (out_dir / "summary.json").write_text(json.dumps(result["summary"], indent=2))
+
+    merged = result["merged"].copy()
+    merged.index.name = "gene_id"
+    merged.to_csv(out_dir / "merged.csv")
+
+    for key in ("concordant_genes", "discordant_genes", f"only_in_{args.name_a}", f"only_in_{args.name_b}"):
+        genes = result[key]
+        filename = key + ".csv"
+        pd.Series(genes, name="gene_id").to_csv(out_dir / filename, index=False)
+
+    run_metadata = {
+        "deconcord_version": _installed_versions()["deconcord"],
+        "python_version": platform.python_version(),
+        "package_versions": _installed_versions(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "command": "deconcord concordance " + " ".join(argv),
+        "input_summary": {
+            "results_a_file": args.results_a,
+            "results_b_file": args.results_b,
+            "name_a": args.name_a,
+            "name_b": args.name_b,
+        },
+        "parameters": {
+            "alpha": args.alpha,
+            "lfc_col_a": args.lfc_col_a,
+            "pvalue_col_a": args.pvalue_col_a,
+            "lfc_col_b": args.lfc_col_b,
+            "pvalue_col_b": args.pvalue_col_b,
+        },
+    }
+    (out_dir / "run_metadata.json").write_text(json.dumps(run_metadata, indent=2))
+
+    summary = result["summary"]
+    print(
+        f"{summary['genes_compared']} genes compared, "
+        f"jaccard={summary['jaccard_index']:.3f}, "
+        f"{summary['significant_in_both']} significant in both at alpha={args.alpha}."
+    )
+    print(f"Results written to {out_dir}/")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     try:
+        if argv and argv[0] == "concordance":
+            return _run_concordance(argv[1:])
         return _run(argv)
     except (CountMatrixError, ValueError, FileNotFoundError, ConnectionError, RuntimeError) as exc:
         print(f"deconcord: {exc}", file=sys.stderr)

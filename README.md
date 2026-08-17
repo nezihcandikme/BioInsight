@@ -10,7 +10,7 @@ Most RNA-seq workflows report the significant genes or pathways from one analysi
 
 It's not a DESeq2/edgeR replacement, and it's not trying to be. Running its own differential expression isn't the main job. DEConcord takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
 
-**Status**: early, pre-1.0 (v0.15.0), under active development. Method concordance, threshold sensitivity, pathway stability, and resampling stability are implemented; method concordance is checked against real data (see [Validation](#validation)).
+**Status**: early, pre-1.0 (v0.16.0), under active development. Method concordance, threshold sensitivity, pathway stability, and resampling stability are implemented; method concordance is checked against real data (see [Validation](#validation)).
 
 ## Quick start
 
@@ -39,6 +39,18 @@ result["summary"]["jaccard_index"]          # significant-gene set overlap
 result["summary"]["directional_agreement"]  # among genes sig. in both, % same direction
 result["discordant_genes"]                  # significant in both, but disagree on direction
 ```
+
+Or do the same comparison from the command line, no Python required:
+
+```bash
+deconcord concordance deseq2_results.csv edger_results.csv \
+    --name-a DESeq2 --name-b edgeR \
+    --lfc-col-a log2FoldChange --pvalue-col-a padj \
+    --lfc-col-b logFC --pvalue-col-b FDR \
+    --out concordance_output
+```
+
+Writes `summary.json`, `merged.csv` (every compared gene, both tables' values side by side), and separate CSVs for the concordant, discordant, and method-specific gene lists.
 
 The underlying pipeline is still there and still real: validation, QC, normalization, DE, enrichment. Run it with `deconcord counts.csv --group1 ... --group2 ...` on the CLI, or call `deconcord.pipeline.run_analysis` as a library function.
 
@@ -144,11 +156,11 @@ Every CLI run writes a `run_metadata.json`: DEConcord version, Python version, c
 
 ## Roadmap
 
-**Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. Resampling stability, checking whether a gene's significance call survives a different sample set through subsampling or leave-one-out. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
+**Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. Resampling stability, checking whether a gene's significance call survives a different sample set through subsampling or leave-one-out. A `deconcord concordance` CLI subcommand, comparing two existing DE result tables without running the pipeline first. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
 
 **Next**: a stress-test benchmark suite (a third DE tool, harder data regimes: unbalanced groups, batch effects, low counts) to check how concordance behaves outside the two clean two-group datasets checked so far.
 
-**Later**: a scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. A CLI subcommand for the concordance functions, once there's more than one interface question to answer than "run the pipeline on one count matrix." Richer interpretation and reporting.
+**Later**: a scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. CLI subcommands for threshold sensitivity and pathway stability too, once the single-function `concordance` subcommand has been used enough to know if the same shape actually fits them. Richer interpretation and reporting.
 
 No dates. This project moves at whatever pace it moves at, and a roadmap with fake deadlines is worse than one without.
 
