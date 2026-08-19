@@ -1,0 +1,84 @@
+{
+  "airway": {
+    "dataset_id": "airway",
+    "source_method": "DESeq2",
+    "target_method": "edgeR",
+    "source_gene_count": 63677,
+    "target_gene_count": 15926,
+    "overlap_gene_count": 15926,
+    "usable_gene_count": 15896,
+    "source_only_gene_count": 47751,
+    "target_only_gene_count": 0,
+    "overlap_dropped_missing_required_count": 30,
+    "overlap_missing_by_required_field": {
+      "log_fold_change_source": 0,
+      "p_value_source": 30,
+      "adjusted_p_value_source": 30,
+      "adjusted_p_value_target": 0
+    },
+    "positive_target_count": 1990,
+    "negative_target_count": 13906,
+    "positive_prevalence": 0.12518872672370407,
+    "missingness_by_feature": {
+      "gene_id": 0,
+      "dataset_id": 0,
+      "source_method": 0,
+      "target_method": 0,
+      "source_log_fold_change": 0,
+      "source_p_value": 0,
+      "source_adjusted_p_value": 0,
+      "source_threshold_significance_fraction": 0,
+      "target_method_significant": 0,
+      "source_significance_stability": 0,
+      "source_direction_stability": 0,
+      "source_rank_stability": 0
+    },
+    "threshold_alphas": [
+      0.01,
+      0.05,
+      0.1
+    ],
+    "robustness_features_included": true
+  },
+  "pasilla": {
+    "dataset_id": "pasilla",
+    "source_method": "DESeq2",
+    "target_method": "edgeR",
+    "source_gene_count": 14599,
+    "target_gene_count": 7919,
+    "overlap_gene_count": 7919,
+    "usable_gene_count": 7919,
+    "source_only_gene_count": 6680,
+    "target_only_gene_count": 0,
+    "overlap_dropped_missing_required_count": 0,
+    "overlap_missing_by_required_field": {
+      "log_fold_change_source": 0,
+      "p_value_source": 0,
+      "adjusted_p_value_source": 0,
+      "adjusted_p_value_target": 0
+    },
+    "positive_target_count": 684,
+    "negative_target_count": 7235,
+    "positive_prevalence": 0.08637454224018185,
+    "missingness_by_feature": {
+      "gene_id": 0,
+      "dataset_id": 0,
+      "source_method": 0,
+      "target_method": 0,
+      "source_log_fold_change": 0,
+      "source_p_value": 0,
+      "source_adjusted_p_value": 0,
+      "source_threshold_significance_fraction": 0,
+      "target_method_significant": 0,
+      "source_significance_stability": 0,
+      "source_direction_stability": 0,
+      "source_rank_stability": 0
+    },
+    "threshold_alphas": [
+      0.01,
+      0.05,
+      0.1
+    ],
+    "robustness_features_included": true
+  }
+}
