@@ -121,14 +121,18 @@ If a proposed feature doesn't help answer "how robust is this differential expre
 
 ## Validation
 
-**DESeq2 vs edgeR concordance** is the actual new core question. Here are the two real datasets checked so far: [`airway`](https://bioconductor.org/packages/release/data/experiment/html/airway.html) (human) and [`pasilla`](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html) (*Drosophila*), each tool run with its own default settings.
+**Method concordance** is the actual new core question. Here are the two real datasets checked so far: [`airway`](https://bioconductor.org/packages/release/data/experiment/html/airway.html) (human) and [`pasilla`](https://bioconductor.org/packages/release/data/experiment/html/pasilla.html) (*Drosophila*), each pair of tools run independently with its own default settings. Three tools checked pairwise: DESeq2, edgeR, and limma-voom.
 
-| dataset | genes compared | Jaccard (sig. overlap) | log2FC Pearson r | directional agreement | discordant genes |
-|---|---:|---:|---:|---:|---:|
-| airway | 15,896 | 0.758 | 0.9995 | 1.000 | 0 |
-| pasilla | 7,919 | 0.785 | 0.9988 | 1.000 | 0 |
+| dataset | pair | genes compared | Jaccard (sig. overlap) | log2FC Pearson r | directional agreement | discordant genes |
+|---|---|---:|---:|---:|---:|---:|
+| airway | DESeq2 vs edgeR | 15,896 | 0.758 | 0.9995 | 1.000 | 0 |
+| airway | DESeq2 vs limma-voom | 15,896 | 0.718 | 0.9901 | 1.000 | 0 |
+| airway | edgeR vs limma-voom | 15,926 | 0.913 | 0.9897 | 1.000 | 0 |
+| pasilla | DESeq2 vs edgeR | 7,919 | 0.785 | 0.9988 | 1.000 | 0 |
+| pasilla | DESeq2 vs limma-voom | 7,919 | 0.766 | 0.9876 | 1.000 | 0 |
+| pasilla | edgeR vs limma-voom | 7,919 | 0.951 | 0.9891 | 1.000 | 0 |
 
-Two established tools, run independently, agree strongly. Correlation is high, and zero genes get called significant by both while disagreeing on direction. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes both agree are real. This is a real finding on two datasets, not a general law about DESeq2 vs edgeR. See `benchmarks/method_concordance.py` and `benchmarks/README.md` for the full methodology.
+Three established tools, run independently, agree strongly with each other in every pairwise combination. Correlation is high across all three pairs, and zero genes get called significant by both members of any pair while disagreeing on direction. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes multiple tools agree are real. This is a real finding on two datasets, not a general law about these three tools. See `benchmarks/method_concordance.py` and `benchmarks/README.md` for the full methodology.
 
 **DEConcord's own DE methods vs DESeq2/edgeR** is a check on the infrastructure, not the project's main claim anymore.
 
