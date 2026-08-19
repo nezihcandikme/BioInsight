@@ -9,6 +9,27 @@ This file is user-facing: what changed and what it means for you. For the
 reasoning behind each decision, including rejected alternatives, see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.17.0] — 2026-08-19
+
+### Added
+- `benchmarks/run_limma_voom.R`: runs limma-voom (standard `filterByExpr`
+  / TMM / `voom` / `lmFit` / `eBayes` workflow) on the same `airway` and
+  `pasilla` datasets and group comparisons the existing DESeq2/edgeR
+  benchmark scripts use, writing `limma_voom_results.csv` /
+  `pasilla_limma_voom_results.csv` in the same per-gene CSV shape
+  (`gene_id`, tool-native `logFC`, a normalized `pvalue` column, and the
+  tool's own adjusted-p-value column name), so the output is a drop-in
+  third input to `compute_de_concordance`.
+- `benchmarks/method_concordance.py` now runs all three pairwise
+  comparisons among DESeq2, edgeR, and limma-voom (previously DESeq2 vs
+  edgeR only), on both datasets. The DESeq2-vs-edgeR numbers are
+  unchanged (verified byte-identical to the previous version).
+
+### Changed
+- README's validation table and `docs/index.html`'s concordance section
+  now report all three pairwise comparisons instead of DESeq2 vs edgeR
+  alone.
+
 ## [0.16.0] — 2026-08-17
 
 ### Added

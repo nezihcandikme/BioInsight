@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DEConcord: how much do DESeq2 and edgeR actually agree?</title>
-  <meta name="description" content="DEConcord measures concordance between RNA-seq differential expression results, DESeq2 vs edgeR or any two DE result tables, so you know which conclusions survive a reasonable change in method, not just what one tool reported." />
+  <title>DEConcord: how much do DESeq2, edgeR, and limma-voom actually agree?</title>
+  <meta name="description" content="DEConcord measures concordance between RNA-seq differential expression results, DESeq2, edgeR, and limma-voom or any two DE result tables, so you know which conclusions survive a reasonable change in method, not just what one tool reported." />
 
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="stylesheet" href="styles.css" />
 
-  <meta property="og:title" content="DEConcord: how much do DESeq2 and edgeR actually agree?" />
+  <meta property="og:title" content="DEConcord: how much do DESeq2, edgeR, and limma-voom actually agree?" />
   <meta property="og:description" content="Method concordance, threshold sensitivity, and pathway stability for RNA-seq differential expression. Depth over breadth, on purpose." />
   <meta property="og:type" content="website" />
 </head>
@@ -52,7 +52,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">Differential expression concordance · v0.16.0</span>
+        <span class="eyebrow">Differential expression concordance · v0.17.0</span>
         <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
         <p class="lede">
           DEConcord takes DE result tables (DESeq2, edgeR, or anything with
@@ -132,12 +132,13 @@ result["discordant_genes"]                  # []</span>
       <div class="container">
         <div class="section-head">
           <span class="eyebrow">Built today</span>
-          <h2>DESeq2 vs edgeR, on real data: how close is close?</h2>
+          <h2>DESeq2, edgeR, and limma-voom, on real data: how close is close?</h2>
           <p>
             Real numbers from <code>compute_de_concordance</code>, run against
-            real DESeq2/edgeR output on two independent public datasets
+            real DESeq2/edgeR/limma-voom output on two independent public datasets
             (<code>airway</code>, human; <code>pasilla</code>, <em>Drosophila</em>),
-            each tool run with its own default settings. Full methodology in
+            each tool run independently with its own default settings, checked
+            pairwise across all three tools. Full methodology in
             <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.
           </p>
         </div>
@@ -145,19 +146,19 @@ result["discordant_genes"]                  # []</span>
         <div class="stat-row">
           <div class="stat">
             <span class="stat-value">0.76 / 0.78</span>
-            <span class="stat-label">Jaccard index: significant-gene overlap (airway / pasilla)</span>
+            <span class="stat-label">Jaccard index, DESeq2 vs edgeR (airway / pasilla)</span>
           </div>
           <div class="stat">
-            <span class="stat-value">&gt;0.998</span>
-            <span class="stat-label">Pearson r, log fold change: DESeq2 vs edgeR, every gene tested</span>
+            <span class="stat-value">0.72 / 0.77</span>
+            <span class="stat-label">Jaccard index, DESeq2 vs limma-voom (airway / pasilla)</span>
           </div>
           <div class="stat">
-            <span class="stat-value">0 / 0</span>
-            <span class="stat-label">Discordant genes: significant in both, but disagreeing on direction</span>
+            <span class="stat-value">0.91 / 0.95</span>
+            <span class="stat-label">Jaccard index, edgeR vs limma-voom (airway / pasilla)</span>
           </div>
         </div>
 
-        <p class="benchmark-note">Two established tools, run independently, agree strongly. Correlation is high, and directional agreement among genes both call significant is perfect. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes both agree are real. This is a real finding on two datasets, not a general law about DESeq2 vs edgeR.</p>
+        <p class="benchmark-note">Three established tools, run independently, agree strongly with each other in every pairwise combination. Log fold change Pearson correlation is high across all three pairs (0.99&ndash;0.9995), and zero genes get called significant by both members of any pair while disagreeing on direction. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes multiple tools agree are real. This is a real finding on two datasets, not a general law about these three tools. Full pairwise numbers, including a small number of low-count, high-variance genes where limma-voom's call diverges more substantially, are in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
       </div>
     </section>
 
