@@ -240,6 +240,57 @@ baseline didn't. Everything else is `sensitive`: baseline-significant
 genes that don't reliably replicate, which is the case worth the closest
 look.
 
+Two more per-gene metrics are computed from the same reruns, no extra DE
+calls involved: `direction_stability` and `rank_stability`. Both are
+built purely from each rerun's `log_fold_change`, independent of the
+significance test above, so they answer different questions from
+`frac_significant`/`is_stable` rather than restating them.
+
+**`direction_stability`.** For gene *g*, let `sign(lfc)` be the sign of
+its log fold change (`+1`, `-1`, or `0`). Over the reruns where *g*'s
+rerun log fold change is a finite number (the denominator, call it
+`n_valid(g)`):
+
+```
+direction_stability(g) = |{ reruns r : sign(lfc_r(g)) == sign(lfc_baseline(g)) }| / n_valid(g)
+```
+
+`NaN` if `n_valid(g) = 0` (no rerun produced a usable estimate for this
+gene), or if `lfc_baseline(g) = 0` or missing (no baseline direction to
+compare against). No significance threshold enters this formula at all —
+a gene can have `direction_stability = 1.0` while never once being
+called significant, and a significant gene can still have a fragile
+direction if the underlying effect is small and noisy.
+
+**`rank_stability`.** For gene *g* in a given run (baseline or rerun) with
+`N` genes that have a finite log fold change in that run, its normalized
+rank (percentile) is:
+
+```
+percentile(g) = (rank(lfc(g)) - 1) / (N - 1)
+```
+
+using ascending rank on the *signed* log fold change (ties broken by
+average rank), so `0` is the most-downregulated gene in that run and `1`
+is the most-upregulated. Ranking on the signed value, not `|lfc|` and not
+a p-value, is what keeps this a measure of relative effect-size position
+rather than another significance view. For gene *g*, over the reruns
+where its own rerun log fold change is finite (the denominator,
+`n_valid(g)`):
+
+```
+rank_stability(g) = 1 - mean_r( |percentile_r(g) - percentile_baseline(g)| )
+```
+
+`NaN` under the same conditions as `direction_stability` (no valid
+reruns, missing baseline log fold change), or if fewer than 2 genes have
+a finite baseline log fold change (nothing to rank against). Bounded to
+`[0, 1]` since both percentiles are in `[0, 1]`; `1.0` means the gene held
+the exact same relative position in every valid rerun, `0.0` means the
+maximum possible average deviation. This is a per-gene score, not one
+correlation coefficient shared across every gene — two genes can have
+very different `rank_stability` values from the same set of reruns.
+
 ### Interpretation
 
 A gene significant in the baseline and in nearly every resampled rerun
@@ -255,6 +306,18 @@ This is a per-gene diagnostic, not a whole-dataset one. A dataset can
 have many stable genes and a handful of sensitive ones; the fragile genes
 are the ones this function exists to surface, not a verdict on the
 dataset as a whole.
+
+`direction_stability` and `rank_stability` add two narrower, complementary
+readings on top of `is_stable`. A gene can be significance-stable and
+direction-stable at once (the common, unremarkable case), or significant
+in the baseline with a `frac_significant` that looks fragile while its
+`direction_stability` stays at `1.0` — the effect's sign was never in
+question, only whether it consistently cleared the significance bar.
+`rank_stability` answers a different question again: whether the gene
+kept roughly the same position among every other gene's effect size, not
+just whether its own call flipped. A gene can hold a stable relative rank
+while another gene's movement past it (not its own value changing) is
+what any single rerun's ranking would show.
 
 ## Limitations of this methodology
 

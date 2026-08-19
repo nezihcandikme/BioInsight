@@ -9,6 +9,31 @@ This file is user-facing: what changed and what it means for you. For the
 reasoning behind each decision, including rejected alternatives, see
 [`DEVLOG.md`](DEVLOG.md).
 
+## [0.18.0] — 2026-08-19
+
+### Added
+- `deconcord.concordance.resampling_stability.compute_resampling_stability`
+  now reports two more per-gene robustness metrics, computed from the
+  same reruns it already performs (no additional DE reruns):
+  - `direction_stability`: fraction of reruns whose log fold change has
+    the same sign as the baseline's, restricted to reruns where that
+    gene produced a finite log fold change. Pure sign comparison, no
+    significance criterion, so it's distinct from `frac_significant`.
+  - `rank_stability`: a per-gene score (not one dataset-wide correlation)
+    measuring how consistently a gene holds the same relative position,
+    by signed log fold change, among every other gene across reruns
+    versus the baseline. `1.0` = same relative position every time.
+  - Both added to the `gene_stability` DataFrame, alongside two new
+    summary keys, `mean_direction_stability` and `mean_rank_stability`,
+    averaged over baseline-significant genes only, matching the existing
+    `baseline_replication_rate` convention.
+  - `is_stable` and its inputs are unchanged.
+
+### Documentation
+- `METHODOLOGY.md`'s resampling stability section now documents the
+  exact formulas, denominators, and edge-case (NaN/insufficient-gene)
+  handling for both new metrics.
+
 ## [0.17.0] — 2026-08-19
 
 ### Added

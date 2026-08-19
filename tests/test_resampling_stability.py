@@ -6,10 +6,15 @@ why bootstrap resampling isn't offered (only "subsample" and
 """
 from fractions import Fraction
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from deconcord.concordance.resampling_stability import compute_resampling_stability
+from deconcord.concordance.resampling_stability import (
+    _direction_stability,
+    _rank_stability,
+    compute_resampling_stability,
+)
 from deconcord.differential_expression.methods import run_differential_expression
 
 GROUP_1 = ["s1", "s2", "s3"]
@@ -156,3 +161,207 @@ def test_propagates_run_differential_expression_errors():
     df = _df()
     with pytest.raises(ValueError, match="not present in the count matrix"):
         compute_resampling_stability(df, ["s1", "nonexistent"], GROUP_2)
+
+
+def test_new_metrics_do_not_change_existing_stability_semantics():
+    # gene_stability gains two columns; is_stable/stable_genes/sensitive_genes
+    # must come out byte-identical to before, since is_stable is still
+    # computed only from frac_significant/stability_threshold.
+    result = compute_resampling_stability(_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    assert list(stability.columns) == [
+        "baseline_significant", "frac_significant", "direction_stability", "rank_stability", "is_stable",
+    ]
+    assert list(result["stable_genes"]) == ["flat", "strong"]
+    assert list(result["sensitive_genes"]) == ["borderline"]
+
+
+def _direction_df():
+    # "hi"/"lo": uniform within each group -> log fold change is identical
+    # in the baseline and every leave-one-out rerun (dropping one of three
+    # identical values doesn't change the mean), so direction never moves.
+    # "flip": baseline lfc is small and positive (0.1); dropping s3
+    # specifically flips it negative (-0.9, since s3=6.0 was the only
+    # group_1 value pulling the mean above group_2's 3.9); every other
+    # drop keeps it positive. Hand-checked, not just run-and-observed.
+    # "zero_baseline": both groups uniformly 5.0 -> log fold change is
+    # exactly 0 in the baseline and every rerun -- no baseline direction
+    # to compare against.
+    return pd.DataFrame({
+        "s1": [10.0, 0.0, 3.0, 5.0],
+        "s2": [10.0, 0.0, 3.0, 5.0],
+        "s3": [10.0, 0.0, 6.0, 5.0],
+        "s4": [0.0, 10.0, 3.9, 5.0],
+        "s5": [0.0, 10.0, 3.9, 5.0],
+        "s6": [0.0, 10.0, 3.9, 5.0],
+    }, index=["hi", "lo", "flip", "zero_baseline"])
+
+
+def test_direction_stability_is_one_when_consistent():
+    result = compute_resampling_stability(_direction_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    assert stability.loc["hi", "direction_stability"] == pytest.approx(1.0)
+    assert stability.loc["lo", "direction_stability"] == pytest.approx(1.0)
+
+
+def test_direction_stability_decreases_when_sign_flips():
+    result = compute_resampling_stability(_direction_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    # 5 of 6 leave-one-out reruns keep the baseline's positive sign; only
+    # dropping s3 flips it -- hand-derived, see _direction_df.
+    assert stability.loc["flip", "direction_stability"] == pytest.approx(float(Fraction(5, 6)))
+    assert stability.loc["flip", "direction_stability"] < stability.loc["hi", "direction_stability"]
+
+
+def test_direction_stability_nan_when_baseline_lfc_is_zero():
+    result = compute_resampling_stability(_direction_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    assert np.isnan(stability.loc["zero_baseline", "direction_stability"])
+
+
+def test_direction_stability_denominator_excludes_invalid_reruns():
+    # Direct unit test of the per-gene helper: real DE reruns essentially
+    # never produce a non-finite log fold change from valid input, so this
+    # exercises the documented "denominator = reruns with a finite value
+    # for that gene" rule deterministically instead of trying to coax a
+    # real DE call into producing NaN.
+    baseline = pd.Series({"g1": 2.0, "g2": -1.0, "g3": 0.0})
+    iteration_lfc = pd.DataFrame({
+        0: {"g1": 1.0, "g2": -1.0, "g3": 5.0},
+        1: {"g1": -1.0, "g2": float("nan"), "g3": 5.0},
+        2: {"g1": float("nan"), "g2": 1.0, "g3": float("nan")},
+    })
+    result = _direction_stability(baseline, iteration_lfc)
+
+    # g1: baseline +, valid reruns are cols 0 (+, match) and 1 (-, no
+    # match); col 2 is NaN and excluded from the denominator -> 1/2.
+    assert result["g1"] == pytest.approx(0.5)
+    # g2: baseline -, valid reruns are cols 0 (-, match) and 2 (+, no
+    # match); col 1 is NaN and excluded -> 1/2, not 1/3.
+    assert result["g2"] == pytest.approx(0.5)
+    # g3: baseline lfc is 0 -> no direction to compare against, NaN
+    # regardless of what the reruns say.
+    assert np.isnan(result["g3"])
+
+
+def test_direction_stability_bounded_in_unit_interval():
+    result = compute_resampling_stability(_direction_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    values = result["gene_stability"]["direction_stability"].dropna()
+    assert not values.empty
+    assert (values >= 0).all() and (values <= 1).all()
+
+
+def _rank_df():
+    # Six genes, all uniform within each group except "swap" -- dropping
+    # any single sample from a uniform group leaves the mean unchanged, so
+    # "anchor"/"bottom"/"stable_mid"/"top"/"ceiling" have the exact same
+    # log fold change in the baseline and every leave-one-out rerun.
+    # "anchor" (lfc -1000) and "ceiling" (lfc +1000) sit far outside
+    # "swap"'s possible range (-20 to 19), so they stay rank 1 / rank 6 no
+    # matter what "swap" does -- a clean "always perfectly stable" case.
+    # "swap" (group_1 = [58, -20, -20], group_2 uniform 0.0) has baseline
+    # lfc (58-20-20)/3 = 6.0, ranked between "stable_mid" (3.0) and "top"
+    # (10.0); dropping s1 sends it to -20.0 (below "bottom"), dropping
+    # s2 or s3 sends it to 19.0 (above "top"). Dropping s4/s5/s6 (group_2)
+    # doesn't touch "swap"'s group_1 values, so those three reruns match
+    # baseline exactly. All values hand-derived, not run-and-observed --
+    # see the DEVLOG entry for the full per-iteration percentile table.
+    return pd.DataFrame({
+        "s1": [0.0, 0.0, 3.0, 58.0, 10.0, 1000.0],
+        "s2": [0.0, 0.0, 3.0, -20.0, 10.0, 1000.0],
+        "s3": [0.0, 0.0, 3.0, -20.0, 10.0, 1000.0],
+        "s4": [1000.0, 10.0, 0.0, 0.0, 0.0, 0.0],
+        "s5": [1000.0, 10.0, 0.0, 0.0, 0.0, 0.0],
+        "s6": [1000.0, 10.0, 0.0, 0.0, 0.0, 0.0],
+    }, index=["anchor", "bottom", "stable_mid", "swap", "top", "ceiling"])
+
+
+def test_rank_stability_is_one_when_rank_preserved():
+    result = compute_resampling_stability(_rank_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    assert stability.loc["anchor", "rank_stability"] == pytest.approx(1.0)
+    assert stability.loc["ceiling", "rank_stability"] == pytest.approx(1.0)
+
+
+def test_rank_stability_decreases_when_rank_moves_substantially():
+    result = compute_resampling_stability(_rank_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    # Hand-derived exact values (six six-gene percentile tables, one per
+    # leave-one-out iteration): "swap" moves in 3 of 6 iterations and ends
+    # up the least rank-stable gene; "bottom"/"stable_mid"/"top" each move
+    # in at most 2 of 6 and are all more stable than "swap".
+    assert stability.loc["swap", "rank_stability"] == pytest.approx(float(Fraction(13, 15)))
+    assert stability.loc["bottom", "rank_stability"] == pytest.approx(float(Fraction(29, 30)))
+    assert stability.loc["stable_mid", "rank_stability"] == pytest.approx(float(Fraction(29, 30)))
+    assert stability.loc["top", "rank_stability"] == pytest.approx(float(Fraction(14, 15)))
+    assert stability.loc["swap", "rank_stability"] < stability.loc["anchor", "rank_stability"]
+    assert stability.loc["swap", "rank_stability"] < stability.loc["top", "rank_stability"]
+
+
+def test_rank_stability_denominator_excludes_invalid_reruns():
+    # Direct unit test of the per-gene helper, same rationale as the
+    # direction_stability denominator test above.
+    baseline = pd.Series({"g1": 1.0, "g2": 2.0, "g3": 3.0, "g4": 4.0})
+    iteration_lfc = pd.DataFrame({
+        0: {"g1": 1.0, "g2": 2.0, "g3": 3.0, "g4": 4.0},
+        1: {"g1": 1.0, "g2": 2.0, "g3": 3.0, "g4": 4.0},
+        2: {"g1": 1.0, "g2": 2.0, "g3": float("nan"), "g4": 4.0},
+    })
+    result = _rank_stability(baseline, iteration_lfc)
+
+    # g3 is invalid in column 2 -- excluded from its own denominator
+    # (averaged over 2 valid reruns, both perfectly rank-preserving), not
+    # treated as a rank-preserving 3rd rerun and not corrupting to NaN.
+    assert result["g3"] == pytest.approx(1.0)
+    # g1 and g4 are valid and rank-preserved in every rerun, including
+    # column 2 (still rank 1 of 3 valid genes there, same relative
+    # position as rank 1 of 4 in the baseline).
+    assert result["g1"] == pytest.approx(1.0)
+    assert result["g4"] == pytest.approx(1.0)
+    # g2 is valid in every rerun, but column 2's ranking universe shrank
+    # to 3 genes (g3 dropped out), which moves g2's normalized rank
+    # relative to the 4-gene baseline even though g2's own value didn't
+    # change -- a real consequence of "rank_stability" measuring relative
+    # position, not an invalid-rerun artifact.
+    assert result["g2"] == pytest.approx(float(Fraction(17, 18)))
+
+
+def test_rank_stability_nan_when_baseline_lfc_missing():
+    baseline = pd.Series({"g1": 1.0, "g2": 2.0, "g3": float("nan")})
+    iteration_lfc = pd.DataFrame({
+        0: {"g1": 1.0, "g2": 2.0, "g3": 5.0},
+        1: {"g1": 1.5, "g2": 2.5, "g3": 6.0},
+    })
+    result = _rank_stability(baseline, iteration_lfc)
+    assert np.isnan(result["g3"])
+
+
+def test_rank_stability_bounded_in_unit_interval():
+    result = compute_resampling_stability(_rank_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    values = result["gene_stability"]["rank_stability"].dropna()
+    assert not values.empty
+    assert (values >= 0).all() and (values <= 1).all()
+
+
+def test_summary_mean_direction_and_rank_stability_use_baseline_significant_genes_only():
+    result = compute_resampling_stability(_direction_df(), GROUP_1, GROUP_2, resample_method="leave_one_out")
+    stability = result["gene_stability"]
+    significant_genes = stability.index[stability["baseline_significant"]]
+
+    # "hi"/"lo" have log fold change 10 and lfc_threshold defaults to 1.0,
+    # so both clear the default significance threshold; "flip" (max |lfc|
+    # 0.9) and "zero_baseline" (lfc 0) don't -- confirmed via the actual
+    # baseline_significant column rather than assumed.
+    assert set(significant_genes) == {"hi", "lo"}
+
+    expected_mean_direction = stability.loc[significant_genes, "direction_stability"].mean()
+    expected_mean_rank = stability.loc[significant_genes, "rank_stability"].mean()
+    assert result["summary"]["mean_direction_stability"] == pytest.approx(expected_mean_direction)
+    assert result["summary"]["mean_rank_stability"] == pytest.approx(expected_mean_rank)
+
+    # And that mean is not silently the all-gene mean: "flip"'s
+    # direction_stability (5/6) would pull the average down if it were
+    # wrongly included.
+    assert result["summary"]["mean_direction_stability"] == pytest.approx(1.0)
+    all_gene_mean_direction = stability["direction_stability"].mean()
+    assert result["summary"]["mean_direction_stability"] != pytest.approx(all_gene_mean_direction)

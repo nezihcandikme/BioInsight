@@ -19,6 +19,14 @@ gene significant in the baseline and in nearly every rerun is stable. A
 gene significant in the baseline but only sometimes in the reruns is
 exactly the kind of fragile finding this function exists to surface.
 
+The same reruns also produce a log fold change per gene, whether or not
+that gene was called significant, which is enough to answer two related
+but distinct robustness questions without any extra DE calls:
+``direction_stability`` (does the gene keep pointing the same way?) and
+``rank_stability`` (does the gene keep roughly the same position relative
+to every other gene?). See ``_direction_stability``/``_rank_stability``
+below for the exact definitions.
+
 Two resampling schemes are offered:
 
 - ``"subsample"``: repeatedly draw a random subset of each group (without
@@ -50,6 +58,70 @@ import pandas as pd
 from deconcord.differential_expression.methods import run_differential_expression
 
 _RESAMPLE_METHODS = {"subsample", "leave_one_out"}
+
+
+def _direction_stability(baseline_lfc: pd.Series, iteration_lfc: pd.DataFrame) -> pd.Series:
+    """
+    Per gene: fraction of reruns whose log fold change has the same sign
+    as the baseline log fold change, restricted to reruns where that
+    gene's rerun log fold change is a finite number (the denominator).
+    Pure sign comparison -- no p-value or significance threshold involved,
+    so this stays distinct from frac_significant/is_stable.
+
+    NaN if the baseline log fold change is exactly 0 (no baseline
+    direction to compare against), if it's missing, or if the gene has no
+    rerun with a finite log fold change.
+    """
+    baseline_sign = np.sign(baseline_lfc)
+    valid = iteration_lfc.notna()
+    matches = np.sign(iteration_lfc).eq(baseline_sign, axis=0) & valid
+
+    n_valid = valid.sum(axis=1)
+    with np.errstate(invalid="ignore"):
+        result = matches.sum(axis=1) / n_valid
+    result = result.where(n_valid > 0)
+    result = result.where(baseline_lfc.notna() & (baseline_sign != 0))
+    return result
+
+
+def _rank_stability(baseline_lfc: pd.Series, iteration_lfc: pd.DataFrame) -> pd.Series:
+    """
+    Per gene: 1 minus the mean absolute difference between the gene's
+    normalized rank (percentile, by signed log fold change, ties broken
+    by average rank) in the baseline and its normalized rank in each
+    rerun, restricted to reruns where that gene's rerun log fold change
+    is a finite number (the denominator). Ranking on the signed log fold
+    change -- not p-value or significance -- measures relative position
+    among all genes, a different property from direction_stability's
+    per-gene sign check or frac_significant's per-gene call rate.
+
+    Percentile = (rank - 1) / (n_valid_genes - 1) within a given run, so
+    0 = lowest log fold change in that run, 1 = highest. Bounded to
+    [0, 1]; higher means the gene held a more consistent relative
+    position. NaN if there are fewer than 2 genes to rank, if the
+    baseline log fold change is missing, or if the gene has no rerun with
+    a finite log fold change.
+    """
+    n_genes = baseline_lfc.notna().sum()
+    if n_genes < 2:
+        return pd.Series(float("nan"), index=baseline_lfc.index)
+
+    baseline_pct = (baseline_lfc.rank(method="average", na_option="keep") - 1) / (n_genes - 1)
+
+    iter_n_valid = iteration_lfc.notna().sum(axis=0)
+    iter_ranks = iteration_lfc.rank(method="average", na_option="keep", axis=0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        iter_pct = (iter_ranks - 1).div(iter_n_valid - 1, axis=1)
+    iter_pct = iter_pct.where(np.isfinite(iter_pct))
+
+    own_valid = iteration_lfc.notna()
+    abs_diff = iter_pct.sub(baseline_pct, axis=0).abs().where(own_valid & iter_pct.notna())
+
+    n_effective = abs_diff.notna().sum(axis=1)
+    result = 1 - abs_diff.mean(axis=1, skipna=True)
+    result = result.where(n_effective > 0)
+    result = result.where(baseline_lfc.notna())
+    return result
 
 
 def compute_resampling_stability(
@@ -118,12 +190,37 @@ def compute_resampling_stability(
           ``mean_jaccard_to_baseline`` (mean, across iterations, of the
           Jaccard index between that iteration's significant-gene set and
           the baseline's; ``NaN`` for an iteration where both sets are
-          empty), and ``baseline_replication_rate`` (mean fraction of
-          reruns in which a baseline-significant gene stayed significant;
-          ``NaN`` if the baseline had no significant genes).
-        - ``"gene_stability"``: a DataFrame indexed by gene ID with
-          ``baseline_significant`` (bool), ``frac_significant`` (fraction
-          of reruns calling the gene significant), and ``is_stable``.
+          empty), ``baseline_replication_rate`` (mean fraction of reruns
+          in which a baseline-significant gene stayed significant; ``NaN``
+          if the baseline had no significant genes), and
+          ``mean_direction_stability``/``mean_rank_stability`` (mean of
+          each gene-level column below, over baseline-significant genes
+          only, same convention as ``baseline_replication_rate``; ``NaN``
+          if the baseline had no significant genes).
+        - ``"gene_stability"``: a DataFrame indexed by gene ID with:
+
+          - ``baseline_significant`` (bool)
+          - ``frac_significant``: fraction of reruns calling the gene
+            significant.
+          - ``direction_stability``: fraction of reruns whose log fold
+            change has the same sign as the baseline's, restricted to
+            reruns where that gene's rerun log fold change is a finite
+            number (the denominator -- see ``_direction_stability``).
+            Sign-only, no significance criterion, so it's a different
+            question from ``frac_significant``. ``NaN`` if the baseline
+            log fold change is 0 or missing, or the gene has no valid
+            rerun.
+          - ``rank_stability``: how consistently the gene holds the same
+            relative position (by signed log fold change, among every
+            gene) across reruns versus the baseline, one minus the mean
+            per-rerun normalized-rank difference, restricted the same way
+            (see ``_rank_stability``). ``1.0`` = same relative position
+            every time, ``0.0`` = maximally different on average. ``NaN``
+            under the same conditions as ``direction_stability``, or if
+            there are fewer than 2 genes to rank.
+          - ``is_stable``: unchanged from before -- still derived only
+            from ``frac_significant`` and ``stability_threshold``, not
+            from either new column.
         - ``"stable_genes"``, ``"sensitive_genes"``: gene IDs split by
           ``is_stable``.
         - ``"baseline_results"``: the full-data
@@ -196,6 +293,7 @@ def compute_resampling_stability(
         actual_n_iterations = len(iterations)
 
     baseline_sig_set = set(gene_index[baseline_significant])
+    lfc_iterations = []
 
     for sample_1, sample_2 in iterations:
         result = run_differential_expression(
@@ -208,11 +306,21 @@ def compute_resampling_stability(
         union = baseline_sig_set | iter_sig_set
         jaccards.append(len(baseline_sig_set & iter_sig_set) / len(union) if union else float("nan"))
 
+        # Same rerun, no extra DE call: log_fold_change is already part of
+        # `result`, just unused until now. Reindexed the same way `sig` is,
+        # so a gene missing from a given rerun (shouldn't happen today, but
+        # kept consistent) is NaN rather than silently misaligned.
+        lfc_iterations.append(result["log_fold_change"].reindex(gene_index))
+
     frac_significant = sig_counts / actual_n_iterations
+    iteration_lfc = pd.concat(lfc_iterations, axis=1, ignore_index=True)
+    baseline_lfc = baseline_results["log_fold_change"]
 
     gene_stability = pd.DataFrame({
         "baseline_significant": baseline_significant,
         "frac_significant": frac_significant,
+        "direction_stability": _direction_stability(baseline_lfc, iteration_lfc),
+        "rank_stability": _rank_stability(baseline_lfc, iteration_lfc),
     })
     is_stable = np.where(
         gene_stability["baseline_significant"],
@@ -222,9 +330,14 @@ def compute_resampling_stability(
     gene_stability["is_stable"] = is_stable
 
     if len(baseline_sig_set):
-        baseline_replication_rate = float(gene_stability.loc[list(baseline_sig_set), "frac_significant"].mean())
+        baseline_sig_genes = list(baseline_sig_set)
+        baseline_replication_rate = float(gene_stability.loc[baseline_sig_genes, "frac_significant"].mean())
+        mean_direction_stability = float(gene_stability.loc[baseline_sig_genes, "direction_stability"].mean())
+        mean_rank_stability = float(gene_stability.loc[baseline_sig_genes, "rank_stability"].mean())
     else:
         baseline_replication_rate = float("nan")
+        mean_direction_stability = float("nan")
+        mean_rank_stability = float("nan")
 
     summary = {
         "resample_method": resample_method,
@@ -232,6 +345,8 @@ def compute_resampling_stability(
         "n_baseline_significant": len(baseline_sig_set),
         "mean_jaccard_to_baseline": float(np.nanmean(jaccards)) if jaccards else float("nan"),
         "baseline_replication_rate": baseline_replication_rate,
+        "mean_direction_stability": mean_direction_stability,
+        "mean_rank_stability": mean_rank_stability,
     }
 
     return {
