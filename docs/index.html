@@ -30,6 +30,7 @@
           <li><a href="#capabilities">Capabilities</a></li>
           <li><a href="#output">Output</a></li>
           <li><a href="#benchmark">Benchmark</a></li>
+          <li><a href="#research">Research</a></li>
           <li><a href="#why">Why</a></li>
         </ul>
       </nav>
@@ -52,7 +53,7 @@
     <!-- 1. HERO -->
     <section class="hero">
       <div class="container">
-        <span class="eyebrow">Differential expression concordance · v0.17.0</span>
+        <span class="eyebrow">Differential expression concordance · v0.18.0</span>
         <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
         <p class="lede">
           DEConcord takes DE result tables (DESeq2, edgeR, or anything with
@@ -378,6 +379,65 @@ result["discordant_genes"]                  # []</span>
         <p class="benchmark-note">Reading the recall number honestly: a per-gene t-test misses most of what DESeq2 and edgeR find, because those tools borrow statistical power across thousands of genes with similar expression levels and DEConcord's default exploratory method doesn't. It also never flagged a gene neither of them agreed with. It's a fast first look, not a final answer. Same conclusion the README has stated all along, now with a number attached to it.</p>
         <p class="benchmark-note">The numbers above are the default method (Welch's t-test, no assumptions borrowed across genes). DEConcord also has an opt-in empirical-Bayes moderated t-test that does borrow across genes. On this same real dataset, it found more than double the significant genes (196 to 431) while keeping the exact same 1.0 precision. Different assumptions, not a strict upgrade. Both numbers are real and both are in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
         <p class="benchmark-note">Checked again on a second, independent dataset (<code>pasilla</code>, <em>Drosophila</em>, a different lab, a different experimental design) to see whether this pattern was specific to <code>airway</code>. It wasn't. With the default method, precision stayed 1.0 and recall landed within a couple of points of the first run (0.085 vs. DESeq2, 0.104 vs. edgeR, against 0.075/0.098 on <code>airway</code>). The moderated method held the same relationship too: precision still 1.0, recall roughly doubled over the default (0.174 vs. DESeq2, 0.215 vs. edgeR, close to <code>airway</code>'s 0.165/0.217). Two independent datasets now agree on both numbers. Full numbers in <a href="https://github.com/nezihcandikme/DeConcord/tree/main/benchmarks" target="_blank" rel="noopener" class="link-accent">benchmarks/</a>.</p>
+      </div>
+    </section>
+
+    <!-- 6.75. EXPERIMENTAL RESEARCH -->
+    <section id="research" class="section-border-top">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Experimental, not in the package</span>
+          <h2>Does DEConcord's own robustness signal predict anything?</h2>
+          <p>
+            A separate, exploratory research track under
+            <code>research/ml/</code>, not merged into <code>deconcord</code>,
+            not installed by <code>pip install</code>, not marketed as an
+            "AI feature." The question: does DEConcord's resampling-derived
+            <code>rank_stability</code> carry predictive information beyond
+            ordinary DE statistics, specifically for genes near a
+            significance decision boundary. Full writeup, every caveat
+            included, in
+            <a href="https://github.com/nezihcandikme/DeConcord/blob/main/research/ml/FINDINGS.md" target="_blank" rel="noopener" class="link-accent">research/ml/FINDINGS.md</a>.
+          </p>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-value">0.50 &rarr; 0.65</span>
+            <span class="stat-label">PR-AUC, conventional DE features vs. + rank_stability, locked evaluation</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">0.85 &rarr; 0.88</span>
+            <span class="stat-label">ROC-AUC, same comparison</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">2 datasets</span>
+            <span class="stat-label">airway, pasilla. Discovery phase, not a validated result</span>
+          </div>
+        </div>
+
+        <p class="benchmark-note">
+          DEConcord's resampling-derived rank stability showed incremental predictive
+          value for borderline genes beyond conventional DE statistics in the current
+          exploratory experiments. The task here is predicting whether edgeR agrees
+          with a borderline DESeq2 significance call (adjusted p-value between 0.01
+          and 0.10), using a logistic regression whose regularization strength was
+          selected by cross-validation on the training dataset alone, then evaluated
+          once on the other, held-out dataset. Across the full gene set, away from
+          that boundary, conventional DE statistics already explain almost everything
+          and the robustness feature adds little, this signal shows up specifically
+          near the decision boundary, which is also where it would matter most.
+        </p>
+        <p class="benchmark-note">
+          What this is not: proven biological replication prediction. It's a
+          cross-method agreement result (does a second DE tool agree with a
+          borderline call from the first), checked on exactly two datasets, with
+          the borderline window itself chosen after an initial look at the data.
+          The long-term aim, estimating whether a discovery-dataset finding
+          replicates in an independent dataset, needs paired discovery/replication
+          data this project doesn't have yet. This result is evidence the
+          underlying idea is worth pursuing toward that aim, not a stand-in for it.
+        </p>
       </div>
     </section>
 

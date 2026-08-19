@@ -6,6 +6,47 @@ biological result. It lives under `research/ml/` on purpose, see the top of
 separate from the public `deconcord` package. Nothing here is merged into
 `src/deconcord/`, marketed, or asserted as validated.
 
+**Status: the airway/pasilla discovery phase for this hypothesis is
+complete.** The locked evaluation below is the strongest and most rigorous
+result produced, and the one to cite if you cite one. Everything after it
+in this document is the supporting work that built up to it. Next priority
+is external dataset expansion under the same frozen experiment design, not
+a more complex model, see "Next" at the bottom.
+
+## Headline result: locked L1-logistic evaluation
+
+The most rigorous experiment run on this hypothesis, and the one this
+finding should be summarized by. `train_l1_locked.py`, L1-penalized
+logistic regression (`liblinear`, `class_weight="balanced"`), regularization
+strength `C` chosen by 5-fold stratified cross-validation *on the training
+dataset only* (`C` in `{0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0}`), then locked
+and evaluated once on the held-out dataset. The held-out dataset is never
+touched during model selection, this is the closest this track has come to
+a real train/select/test split rather than a PR-AUC comparison at a fixed,
+unselected hyperparameter.
+
+Borderline DESeq2 genes only (adjusted p-value 0.01-0.10). Conventional
+features: `abs_logfc`, `neg_log10_p`. Combined: same, plus
+`source_rank_stability`.
+
+**Locked `pasilla -> airway` evaluation** (trained on `pasilla`, `C`
+selected by CV on `pasilla` alone, scored once on `airway`):
+
+| Model | Selected C | PR-AUC | ROC-AUC |
+|---|---:|---:|---:|
+| Conventional | 3 | 0.5017 | 0.8520 |
+| + `source_rank_stability` | 10 | 0.6504 | 0.8843 |
+
+Delta PR-AUC: **+0.1487**. `source_rank_stability` coefficient in the
+locked model: **+2.4305** (positive, and by far the largest-magnitude
+coefficient in that model, on standardized features).
+
+This is a stronger, more carefully validated version of the borderline
+result reported further down this document, same direction, same
+"`rank_stability` specifically, not the other robustness columns" pattern,
+but with the model-selection step itself kept honest about what it was and
+wasn't allowed to see.
+
 ## Setup
 
 Task: predict `target_method_significant` (edgeR `FDR < 0.05`) for a gene
@@ -55,14 +96,19 @@ DESeq2 p-value and effect size already say almost everything there is to
 say about whether edgeR will agree. There isn't much room left for a
 robustness feature to add.
 
-## Borderline-window result
+## Earlier supporting result: unlocked borderline-window comparison
 
-The more interesting regime is genes DESeq2 itself is unsure about,
-adjusted p-value between 0.01 and 0.10 (`train_borderline.py`). Genes DESeq2
-is confident about, deep in the tails, need less help; genes near its own
-decision boundary are exactly where an independent robustness signal could
-matter most, which is also the premise this whole research track was built
-to test.
+The experiment that led to the headline result above. Same borderline
+regime, same feature groups, but an ordinary (unregularized) logistic
+regression at default settings rather than the locked, CV-selected L1 model.
+Reported here because it's what motivated everything that followed, not as
+the number to cite on its own.
+
+Genes DESeq2 itself is unsure about, adjusted p-value between 0.01 and 0.10
+(`train_borderline.py`). Genes DESeq2 is confident about, deep in the tails,
+need less help; genes near its own decision boundary are exactly where an
+independent robustness signal could matter most, which is also the premise
+this whole research track was built to test.
 
 | Direction | Conventional PR-AUC | + `rank_stability` PR-AUC |
 |---|---:|---:|
@@ -93,6 +139,19 @@ extra feature instead of the raw value.
 The gain survives almost unchanged. Whatever `rank_stability` is capturing
 in the borderline regime, it isn't simply a restatement of effect size and
 p-value.
+
+## L1 regularization checks
+
+Two more checks, both supporting the headline result rather than replacing
+it. `train_l1_ablation.py` sweeps the same `C` grid used by the locked
+evaluation on the combined feature set alone and confirms `rank_stability`
+keeps a nonzero, non-trivial coefficient across the full range, an L1
+penalty is specifically willing to zero out a feature it finds redundant,
+and doesn't here. `train_l1_matched.py` compares conventional-vs-combined
+at each fixed `C` (rather than separately tuning and locking one `C` per
+feature set) and finds the combined model ahead of the conventional one at
+matched regularization strength across the grid, consistent with the locked
+result rather than an artifact of `C` selection favoring the combined model.
 
 ## Window sensitivity
 
@@ -132,11 +191,17 @@ substitute for that.
   across the whole gene set, conventional DE statistics already carry
   almost all the signal there.
 - `rank_stability` specifically, not `direction_stability`, not
-  `significance_stability`, adds real, residualization-surviving signal
-  in the regime where DESeq2's own call is already borderline.
+  `significance_stability`, adds real signal in the regime where DESeq2's
+  own call is already borderline. It survives residualization against
+  conventional DE strength, survives L1 regularization across a range of
+  penalty strengths, and produces the largest gain of any experiment run
+  in the locked, CV-selected evaluation above.
 - This is the shape of result the project's stated long-term aim expects:
   robustness information should matter most exactly when the ordinary
   DE conclusion is ambiguous, not when it's already obvious.
+- This predicts **cross-method significance agreement** (does edgeR agree
+  with a borderline DESeq2 call), **not biological replication**. Those are
+  different questions; see Caveats.
 
 ## Caveats (not a checklist to relax later, an honest accounting now)
 
@@ -165,6 +230,25 @@ substitute for that.
 - **Robustness features are computed on DEConcord's own DE workflow, not
   DESeq2's.** See `INVENTORY.md`'s methodological note. `rank_stability` is
   a proxy signal, not literally "how stable is DESeq2's own call."
+- **Gene-level CV/bootstrap is not study-level generalization.** The locked
+  evaluation's cross-validation, and the bootstrap intervals further up,
+  both quantify uncertainty over genes within the datasets already used.
+  Neither substitutes for testing on an independent third dataset, which is
+  the actual next step, see below.
+
+## Next: external dataset expansion before more complex models
+
+The airway/pasilla discovery phase for this hypothesis is done. The next
+scientific priority is testing the same, now-frozen experiment design
+(borderline window, conventional + `rank_stability` features, locked L1
+logistic regression with train-only CV for `C`) against a third,
+independent dataset, not building a more complex model on the same two
+datasets. Two datasets can show a pattern is real and survives several
+robustness checks, which this one has; they can't show it generalizes past
+those two datasets, and a more expressive model fit to the same two
+datasets would risk mistaking dataset-specific quirks for a real effect
+before that question is even asked. Dataset selection and acquisition for
+this step haven't started yet.
 
 ## Reproduce
 
@@ -178,6 +262,9 @@ From the repository root, with the research dependencies available:
 .venv/bin/python research/ml/train_residual_rank.py
 .venv/bin/python research/ml/train_window_sensitivity.py
 .venv/bin/python research/ml/bootstrap_rank_gain.py
+.venv/bin/python research/ml/train_l1_ablation.py
+.venv/bin/python research/ml/train_l1_matched.py
+.venv/bin/python research/ml/train_l1_locked.py
 ```
 
 None of these scripts currently write their results to a file, the numbers

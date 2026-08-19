@@ -10,7 +10,7 @@ Most RNA-seq workflows report the significant genes or pathways from one analysi
 
 It's not a DESeq2/edgeR replacement, and it's not trying to be. Running its own differential expression isn't the main job. DEConcord takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
 
-**Status**: early, pre-1.0 (v0.16.0), under active development. Method concordance, threshold sensitivity, pathway stability, and resampling stability are implemented; method concordance is checked against real data (see [Validation](#validation)).
+**Status**: early, pre-1.0 (v0.18.0), under active development. Method concordance, threshold sensitivity, pathway stability, and resampling stability (including per-gene direction and rank stability) are implemented; method concordance is checked against real data (see [Validation](#validation)).
 
 ## Quick start
 
@@ -104,7 +104,7 @@ interpretable report                     ← not built yet
 - `deconcord.concordance.methods.compute_de_concordance`. Given two DE result tables for the same comparison, it computes the overlap and Jaccard index of their significant-gene calls, the Pearson and Spearman correlation of log fold change across every gene both tables tested, directional agreement (among genes significant in both, the fraction that agree on the sign of the effect), and explicit concordant, discordant, and method-specific gene lists. See `benchmarks/method_concordance.py` for a real run against real DESeq2/edgeR output.
 - `deconcord.concordance.threshold_sensitivity.compute_threshold_sensitivity`. Sweeps `compute_de_concordance` across a range of significance thresholds (`alpha` values) between the same two tables, so you can see whether a concordance conclusion holds up across a reasonable range of cutoffs or is an artifact of the particular threshold checked. Reports both an alpha-by-alpha summary and, per gene, what fraction of the swept thresholds call it significant in each table.
 - `deconcord.concordance.pathway_stability.compute_pathway_stability`. The same overlap-and-Jaccard idea, applied to two pathway enrichment result tables instead of two DE tables. Answers "does this pathway stay enriched regardless of which DE method or threshold produced the significant-gene list," rather than "does this gene stay significant."
-- `deconcord.concordance.resampling_stability.compute_resampling_stability`. Reruns DE on perturbed sample sets (repeated random subsamples, or exhaustive leave-one-out) and reports, per gene, what fraction of reruns still call it significant. Answers "does this gene stay significant regardless of which samples happened to be in the dataset," the sample-level analog of threshold sensitivity.
+- `deconcord.concordance.resampling_stability.compute_resampling_stability`. Reruns DE on perturbed sample sets (repeated random subsamples, or exhaustive leave-one-out) and reports, per gene, what fraction of reruns still call it significant. Answers "does this gene stay significant regardless of which samples happened to be in the dataset," the sample-level analog of threshold sensitivity. Also reports `direction_stability` (does the gene keep the same effect direction across reruns) and `rank_stability` (does it keep roughly the same position relative to every other gene), computed from the same reruns at no extra cost.
 
 **Everything else is infrastructure, not the identity.** It's what's left of the original bulk RNA-seq pipeline. It's kept because it's useful (it's how the `benchmarks/` DE result tables get generated, and it's a future source of a third method to check for concordance), not because DEConcord is trying to be a general-purpose RNA-seq toolkit:
 
@@ -153,6 +153,14 @@ Precision is the fraction of genes DEConcord's own method calls significant that
 - Concordance findings so far come from two datasets (`airway`, `pasilla`), both standard two-group designs. Whether DESeq2/edgeR concordance holds up on unbalanced groups, batch effects, or more complex designs hasn't been checked.
 - The underlying DE infrastructure (validation, QC, DE, enrichment) still only supports two-group condition comparisons, with optional covariate adjustment. No paired samples, no more than two condition levels.
 - Pathway stability only compares presence/absence of significance between two enrichment tables. It has no way to detect that the two tables were built on different gene-set collections or background universes, which would make the comparison meaningless even though the function runs without error. See `METHODOLOGY.md`.
+
+## Research (experimental, not part of the package)
+
+`research/ml/` is a separate, exploratory track testing whether DEConcord's own robustness metrics carry predictive information beyond ordinary DE statistics. It's not merged into `src/deconcord/`, not installed by `pip install -e .`, and not marketed as an "AI" feature, see `CONTRIBUTING.md`'s Scope section for why that boundary is deliberate.
+
+Current finding, on `airway` and `pasilla`: predicting whether edgeR agrees with a borderline DESeq2 call (adjusted p-value 0.01-0.10) from conventional DE statistics alone versus the same statistics plus `rank_stability`, in a locked evaluation (train-only cross-validation chose the model, the other dataset was touched only once, for final scoring), adding `rank_stability` moved PR-AUC from 0.50 to 0.65. The gain held up under several checks (residualizing against ordinary DE strength, L1 regularization, a window-sensitivity sweep, bootstrap uncertainty intervals) and traced specifically to `rank_stability`, not the other robustness columns.
+
+Read plainly, not overstated: this predicts whether two DE *methods* agree on a borderline gene. It is not a biological replication result, and it hasn't been tested on more than two datasets. See [`research/ml/FINDINGS.md`](research/ml/FINDINGS.md) for the full writeup, including every caveat, and [`research/ml/INVENTORY.md`](research/ml/INVENTORY.md) for exactly what data and features this used. The airway/pasilla discovery phase for this specific hypothesis is done; next is checking whether it holds on an independent third dataset before trying a more complex model.
 
 ## Reproducibility
 
