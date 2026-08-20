@@ -9,7 +9,7 @@
 #
 # `zfGenes` (zebrafishRNASeq package): Ferreira et al., Danio rerio
 # (zebrafish), gsk3 knockdown vs. wild-type control, 6 samples (3 control:
-# Ctl1/Ctl3/Ctl5, 3 knockdown: Trt1/Trt3/Trt5). This is the exact dataset
+# Ctl1/Ctl3/Ctl5, 3 knockdown: Trt9/Trt11/Trt13). This is the exact dataset
 # the edgeR User's Guide itself uses for its "count matrix input with ERCC
 # spike-ins" walkthrough, so the loading and filtering steps below follow
 # that guide's own pattern deliberately, same reasoning run_deseq2_edger_
