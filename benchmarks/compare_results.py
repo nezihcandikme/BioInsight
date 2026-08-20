@@ -69,6 +69,13 @@ DATASETS = {
         "group_2_value": "control",
         "result_prefix": "zebrafish_",
     },
+    "bottomly": {
+        "r_script": "run_deseq2_edger_bottomly.R",
+        "group_col": "condition",
+        "group_1_value": "D2",
+        "group_2_value": "B6",
+        "result_prefix": "bottomly_",
+    },
 }
 
 

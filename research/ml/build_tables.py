@@ -25,6 +25,11 @@ DATASETS = {
         "zebrafish_edger_results.csv",
         "zebrafish_robustness.csv",
     ),
+    "bottomly": (
+        "bottomly_deseq2_results.csv",
+        "bottomly_edger_results.csv",
+        "bottomly_robustness.csv",
+    ),
 }
 
 

@@ -74,6 +74,35 @@ def run_pasilla(force: bool = False):
     )
 
 
+def _groups_from_metadata(metadata_filename, group_col, group_1_value, group_2_value):
+    # Derives group_1/group_2 sample-name lists from a metadata CSV's own
+    # condition column at runtime, instead of a hardcoded sample-ID list --
+    # the same fix applied at the R layer for bottomly (see
+    # run_deseq2_edger_bottomly.R's column-name-pattern classification)
+    # applied here too, so a wrong remembered sample name (the zebrafish
+    # bug) can't happen on this path even accidentally: whatever
+    # run_deseq2_edger_bottomly.R actually wrote to bottomly_metadata.csv
+    # is what gets used, not a guess made separately in Python.
+    meta = pd.read_csv(DATA_DIR / metadata_filename)
+    group_1 = meta.loc[meta[group_col] == group_1_value, "sample"].tolist()
+    group_2 = meta.loc[meta[group_col] == group_2_value, "sample"].tolist()
+    return group_1, group_2
+
+
+def run_bottomly(force: bool = False):
+    group_1, group_2 = _groups_from_metadata(
+        "bottomly_metadata.csv", group_col="condition", group_1_value="D2", group_2_value="B6",
+    )
+    _run_resampling(
+        "bottomly",
+        "bottomly_counts.csv",
+        group_1=group_1,
+        group_2=group_2,
+        output_filename="bottomly_robustness.csv",
+        force=force,
+    )
+
+
 def run_zebrafish(force: bool = False):
     # Corrected sample names -- the real zfGenes knockdown replicates are
     # Trt9/Trt11/Trt13, not Trt1/Trt3/Trt5 (a wrong guess from an earlier
@@ -93,6 +122,7 @@ DATASET_RUNNERS = {
     "airway": run_airway,
     "pasilla": run_pasilla,
     "zebrafish": run_zebrafish,
+    "bottomly": run_bottomly,
 }
 
 
