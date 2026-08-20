@@ -467,3 +467,27 @@ Decisions rejected along the way:
 - **Using recount3's `compute_read_counts()` instead of `transform_counts()`.** Both are documented recount3 conversions; `transform_counts(by = "auc", ...)` was picked because it's the one recount3's own documentation points to specifically for downstream use with DESeq2/limma, which is exactly this script's use case.
 
 No package version bump: this entry documents `benchmarks/` (research-supporting infrastructure) and the `research/ml/` acquisition path, not `src/deconcord/`. Current package version stays 0.18.0.
+
+---
+
+## Aug 20: closing the ML research phase, Bottomly reverses the headline result
+
+With Bottomly acquired via recount3 and run locally, the frozen L1-logistic evaluation (see the two previous entries) had its first genuinely evaluable third dataset: 1,997 borderline genes, 946 positive, 1,051 negative, no `NON-EVALUABLE` skip.
+
+`pasilla -> bottomly`, same locked design, unmodified: conventional PR-AUC 0.9491, ROC-AUC 0.9540; adding `rank_stability`, PR-AUC 0.9230, ROC-AUC 0.9127. Delta PR-AUC -0.0261, delta ROC-AUC -0.0413. That's the opposite sign from `pasilla -> airway`'s +0.1487. Bottomly's borderline window also turned out to have a strikingly compressed `rank_stability` distribution, mean 0.996057, SD 0.001679, range 0.990389-0.999754, versus real spread on airway/pasilla, and its conventional-only PR-AUC (0.9491) was already far higher than airway's (0.5017), the B6-vs-D2 strain contrast is evidently a much easier separation for DESeq2 and edgeR to agree on than either drug/RNAi contrast this hypothesis was originally built against.
+
+This is the fourth and final dataset attempted under this frozen design (borderline window 0.01-0.10, conventional + `rank_stability` features, locked L1 logistic regression with train-only CV for `C`), not widened, rescued, or re-run in response to Bottomly's result, that would be exactly the kind of post-hoc adjustment the frozen design exists to prevent. The scorecard across all four: airway/pasilla positive (`rank_stability` helps), Bottomly negative (`rank_stability` hurts), zebrafish non-evaluable (one-class target, not counted either way).
+
+Closing read, quoted in full because it's meant to be the citable summary going forward: "DeConcord rank stability showed incremental predictive value for borderline cross-method significance agreement in airway/pasilla transfer experiments, but the benefit did not generalize universally: it decreased performance on Bottomly, while zebrafish was non-evaluable under the frozen endpoint. The current evidence therefore supports dataset-dependent, rather than universal, predictive value." Not a failure of DEConcord, and not a retraction of the airway/pasilla number, both are real results from the same frozen design applied to different data. Updated `research/ml/FINDINGS.md` (new Bottomly section, folded the zebrafish section into the same closing frame, replaced "Current interpretation" with a scoped "airway/pasilla, on their own" section plus a new "Closing interpretation" that carries the quote above), `README.md`'s Research section, and the website's `#research` section (`docs/index.html`) to match, all with the same conservative framing, explicitly exploratory, explicitly not a package claim.
+
+Also checked, per an explicit ask, whether an sklearn L1/`LogisticRegression` deprecation warning could be cleaned up in `train_l1_locked.py`. Ran the script with `-W always` against the sandbox's pinned sklearn (1.7.2): no warning fires. `LogisticRegression.__init__`'s `multi_class` parameter defaults to a `'deprecated'` sentinel in this version and only warns if a caller explicitly passes it, which this script never does. No code change made, none needed here; if a warning shows up in a different, older sklearn install, that's a version difference outside this script's control, not a bug in it. Left as a documented non-finding rather than a fix, per "otherwise leave it documented for later."
+
+Model semantics unchanged in this entire pass: no new models, no threshold or window changes, no feature or target changes, no change to hyperparameter selection. This was a documentation and interpretation close-out, not an experiment. `pytest -q`: 247 passed (unchanged). `ruff check src/ tests/ benchmarks/ examples/`: clean.
+
+Decisions rejected along the way:
+
+- **Treating Bottomly as a bug to chase down** (rescaling `rank_stability`, trying a different `C` grid, restricting to a sub-window where the two datasets might agree) instead of as a real result. Rejected outright, the whole point of a frozen design tested on multiple datasets is that a dataset you don't like the result on doesn't get special treatment.
+- **Reporting only the airway/pasilla number now that a countervailing result exists.** Would misrepresent what four datasets actually showed and contradict the same honesty standard this project applied to zebrafish being non-evaluable instead of quietly dropped.
+- **Averaging or otherwise combining the airway/pasilla and Bottomly deltas into one number.** Would erase the actual finding, that the effect is dataset-dependent, behind a summary statistic that looks more decisive than the underlying evidence is.
+
+No version bump: this entry documents `research/ml/` interpretation and documentation only. Current package version stays 0.18.0. This research phase is closed; no further experiments are planned against this frozen design without new data or a different question.

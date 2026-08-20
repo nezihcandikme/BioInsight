@@ -6,12 +6,17 @@ biological result. It lives under `research/ml/` on purpose, see the top of
 separate from the public `deconcord` package. Nothing here is merged into
 `src/deconcord/`, marketed, or asserted as validated.
 
-**Status: the airway/pasilla discovery phase for this hypothesis is
-complete.** The locked evaluation below is the strongest and most rigorous
-result produced, and the one to cite if you cite one. Everything after it
-in this document is the supporting work that built up to it. Next priority
-is external dataset expansion under the same frozen experiment design, not
-a more complex model, see "Next" at the bottom.
+**Status: this ML research phase is closed.** The airway/pasilla discovery
+phase produced the locked headline result below. External validation under
+the same frozen design then ran on two more datasets: Bottomly (evaluable,
+946/1,051 borderline genes) and zebrafish (non-evaluable, one-class
+target). Bottomly's result reverses the direction of the headline finding,
+`rank_stability` *hurt* transfer performance there. Read together, the
+honest summary is dataset-dependent, not universal, predictive value, see
+"External validation: Bottomly" and "Closing interpretation" below. No
+further experiments are planned against this frozen design; a resumed
+track would need new data or a materially different question, not another
+run of the same four datasets.
 
 ## Headline result: locked L1-logistic evaluation
 
@@ -185,29 +190,42 @@ fit. They are not, and shouldn't be read as, evidence about generalization
 to a third dataset. With `n=2` datasets total, no bootstrap procedure can
 substitute for that.
 
-## Current interpretation
+## Current interpretation (airway/pasilla, on their own)
+
+This section describes what the airway/pasilla experiments alone showed,
+kept here because everything downstream of it (residualization, L1 checks,
+window sensitivity, bootstrap) was built to stress-test exactly this
+reading. It is not the final word on the whole phase; see "Closing
+interpretation" below for that, after Bottomly's result is folded in.
 
 - Robustness features add essentially nothing when predicting agreement
   across the whole gene set, conventional DE statistics already carry
   almost all the signal there.
 - `rank_stability` specifically, not `direction_stability`, not
   `significance_stability`, adds real signal in the regime where DESeq2's
-  own call is already borderline. It survives residualization against
-  conventional DE strength, survives L1 regularization across a range of
-  penalty strengths, and produces the largest gain of any experiment run
-  in the locked, CV-selected evaluation above.
+  own call is already borderline, on airway and pasilla. It survives
+  residualization against conventional DE strength, survives L1
+  regularization across a range of penalty strengths, and produces the
+  largest gain of any experiment run in the locked, CV-selected evaluation
+  above.
 - This is the shape of result the project's stated long-term aim expects:
   robustness information should matter most exactly when the ordinary
-  DE conclusion is ambiguous, not when it's already obvious.
+  DE conclusion is ambiguous, not when it's already obvious. Bottomly
+  below is a real counterexample to that expectation, not a confirmation
+  of it, worth sitting with rather than explaining away.
 - This predicts **cross-method significance agreement** (does edgeR agree
   with a borderline DESeq2 call), **not biological replication**. Those are
   different questions; see Caveats.
 
 ## Caveats (not a checklist to relax later, an honest accounting now)
 
-- **Two datasets.** `airway` and `pasilla` are the only data this has been
-  checked on. Every cross-dataset number above is real, but two datasets
-  is not a claim of generality.
+- **Two datasets support the positive result; a third reverses it.**
+  `airway` and `pasilla` are the only data the original headline gain was
+  checked on. Bottomly, a third, evaluable dataset, was checked afterward
+  under the identical frozen design and showed the opposite direction. Four
+  datasets were attempted in total; two produced usable evaluations
+  (airway/pasilla positive, Bottomly negative) and one (zebrafish) was
+  non-evaluable. This is not a claim of generality in either direction.
 - **Post-hoc window selection.** The 0.01-0.10 borderline window was chosen
   after seeing that the all-gene result was uninteresting, then five
   neighboring windows were checked to see if the finding was an artifact of
@@ -236,12 +254,56 @@ substitute for that.
   Neither substitutes for testing on an independent third dataset, which is
   the actual next step, see below.
 
-## External validation attempt: zebrafish (non-evaluable, not a negative result)
+## External validation: Bottomly (evaluable, and it reverses the headline result)
 
-The first external-dataset attempt, `zfGenes` (zebrafishRNASeq package,
-gsk3 knockdown vs. control, 3 vs 3, see `benchmarks/run_deseq2_edger_
-zebrafish.R`), turned out **non-evaluable** for this frozen endpoint, not
-a data point against `rank_stability`.
+Bottomly et al. 2011 (mouse striatum, B6 vs D2, 21 samples, roughly triple
+zebrafish's replication, see `benchmarks/run_deseq2_edger_bottomly.R`) is
+what zebrafish wasn't: a genuinely evaluable external dataset under the
+frozen borderline-window endpoint. 1,997 genes fall in the
+`source_adjusted_p_value` 0.01-0.10 window, 946 positive
+(`target_method_significant`, edgeR `FDR < 0.05`), 1,051 negative, target
+prevalence 0.47371, both classes well represented in both train and test
+splits, no `NON-EVALUABLE` skip.
+
+One notable property of this dataset: `source_rank_stability` in Bottomly's
+borderline window is far more compressed than in airway/pasilla, mean
+0.996057, SD 0.001679, range 0.990389-0.999754. Nearly every borderline
+gene sits close to perfectly rank-stable under DEConcord's own leave-one-out
+resampling on this dataset, unlike airway/pasilla, where this feature had
+more room to vary and discriminate.
+
+Locked evaluation, same frozen design (L1-penalized logistic regression,
+`C` chosen by 5-fold CV on the training dataset only, evaluated once on
+held-out), `pasilla -> bottomly`:
+
+| Model | PR-AUC | ROC-AUC |
+|---|---:|---:|
+| Conventional | 0.9491 | 0.9540 |
+| + `source_rank_stability` | 0.9230 | 0.9127 |
+
+Delta PR-AUC: **-0.0261**. Delta ROC-AUC: **-0.0413**. Adding
+`rank_stability` made the locked model *worse* on this transfer, the
+opposite direction from the `pasilla -> airway` headline result above.
+
+This is not read as a failure of DEConcord generally, and not as evidence
+the airway/pasilla result was spurious, the residualization, window
+sensitivity, bootstrap, and L1 checks earlier in this document all still
+hold on the data they were run on. It's read as evidence that
+`rank_stability`'s incremental value is dataset-dependent rather than
+universal: on a dataset where this feature is nearly constant across the
+borderline population (as it is on Bottomly), it has little room to add
+signal and some room to add noise to a model that was already performing
+very well from conventional features alone (Bottomly's B6-vs-D2 contrast is
+evidently a much easier separation for DESeq2/edgeR to agree on than
+airway's or pasilla's treatment contrasts, conventional PR-AUC 0.9491
+here versus 0.5017 on `pasilla -> airway`).
+
+## Non-evaluable: zebrafish
+
+`zfGenes` (zebrafishRNASeq package, gsk3 knockdown vs. control, 3 vs 3, see
+`benchmarks/run_deseq2_edger_zebrafish.R`) remains **non-evaluable** for
+this frozen endpoint, not a data point against `rank_stability`, and not
+one for it either.
 
 What happened, and the root cause is broader than the borderline window:
 `zebrafish_deseq2_to_edger.csv` has 17,198 usable genes, and
@@ -257,43 +319,70 @@ genes (mean 0.9837, std 0.0188, min 0.8961, max 0.9989, no missing
 values), so the robustness feature pipeline has no bug here, the problem
 is entirely in the target. PR-AUC and ROC-AUC are undefined for a
 single-class target, there is no meaningful way to score a model against
-it, and `train_l1_locked.py` now detects this before attempting to fit or
+it, and `train_l1_locked.py` detects this before attempting to fit or
 evaluate anything and skips the direction with an explicit `NON-EVALUABLE`
 message rather than silently producing a meaningless number or crashing.
 
-Why edgeR found nothing, as best as can be told without a fourth data
-point to compare against: 3-vs-3 replication is thin for a real, noisy
-biological knockdown effect, and `FDR < 0.05` is a real bar, not a
-generous one. This is a statement about *this dataset's power under
-edgeR's own default settings*, not about `rank_stability`, not about
-DEConcord's methods, and not about the direction of the effect found on
-airway/pasilla. It doesn't get counted as evidence for or against the
-hypothesis. It's recorded as a domain-of-applicability finding: the
-current frozen design (this borderline window, this significance
-threshold, this target definition) needs a dataset where edgeR actually
-finds *something*, and not every real RNA-seq dataset will clear that
-bar, especially not one this small. Per the design constraints for this
-track, the window and target definition are not being changed in response
-to seeing this, that would be exactly the kind of post-hoc adjustment the
-frozen design exists to prevent. zebrafish's `zfGenes`/
+Why edgeR found nothing, as best as can be told: 3-vs-3 replication is thin
+for a real, noisy biological knockdown effect, and `FDR < 0.05` is a real
+bar, not a generous one. This is a statement about *this dataset's power
+under edgeR's own default settings*, not about `rank_stability`, not about
+DEConcord's methods. It doesn't get counted as evidence for or against the
+hypothesis in either direction. zebrafish's `zfGenes`/
 `zebrafish_robustness.csv`/`zebrafish_deseq2_to_edger.csv` and the
 `benchmarks/results/*_zebrafish.*` outputs are kept, real, checked-in
 data, just not usable for this particular question.
 
-## Next: a fourth external dataset, higher powered than zebrafish
+## Closing interpretation
 
-The airway/pasilla discovery phase for this hypothesis is done, and
-zebrafish's result above means the external-validation step isn't either.
-The next scientific priority is still testing the same, unmodified frozen
-experiment design (borderline window, conventional + `rank_stability`
-features, locked L1 logistic regression with train-only CV for `C`)
-against a genuinely independent dataset, this time picked with the
-zebrafish lesson in mind: it needs enough replicates and effect size for
-DESeq2-borderline and edgeR-positive genes to actually co-occur, or the
-same non-evaluable outcome just repeats. Not a reason to build a more
-complex model on the two datasets already in hand, a more expressive model
-fit to the same two datasets risks mistaking their specific quirks for a
-real effect before generalization is even checked.
+This phase is closed with four datasets tested under one unmodified frozen
+design (borderline window 0.01-0.10, conventional + `rank_stability`
+features, locked L1 logistic regression with train-only CV for `C`), not
+widened, rescued, or re-run in response to any single dataset's result:
+
+- **Global/all-gene prediction remains easy** from conventional DE
+  statistics alone across every dataset checked; `rank_stability` adds
+  little there. See "All-gene results" above.
+- **In the frozen borderline population, `rank_stability` showed
+  substantial incremental predictive value in the airway/pasilla
+  cross-dataset experiments** (`pasilla -> airway`: PR-AUC 0.5017 to
+  0.6504). This gain survived residualization against conventional DE
+  strength, a five-window sensitivity sweep, bootstrap uncertainty
+  intervals, an L1 ablation, and a train-only hyperparameter-selection
+  procedure, see the relevant sections above.
+- **Bottomly is a valid, evaluable external dataset** (1,997 borderline
+  genes, 946 positive, 1,051 negative, prevalence 0.47371), and on it
+  `rank_stability` *hurt* transfer performance (`pasilla -> bottomly`:
+  PR-AUC 0.9491 to 0.9230, ROC-AUC 0.9540 to 0.9127), the opposite
+  direction from airway/pasilla.
+- **Zebrafish remains non-evaluable** under the frozen endpoint (one-class
+  target, zero edgeR-significant genes dataset-wide) and is not counted as
+  evidence either way.
+
+Preferred concise conclusion, quoted directly for anyone citing this work:
+
+> DeConcord rank stability showed incremental predictive value for
+> borderline cross-method significance agreement in airway/pasilla
+> transfer experiments, but the benefit did not generalize universally:
+> it decreased performance on Bottomly, while zebrafish was non-evaluable
+> under the frozen endpoint. The current evidence therefore supports
+> dataset-dependent, rather than universal, predictive value.
+
+This does not overturn the airway/pasilla result on its own data, and it
+does not establish that `rank_stability` is generally useful either. Both
+things are true at once, and reporting only one of them would misrepresent
+what four datasets under one frozen design actually showed. No new models,
+thresholds, or window widths were introduced in response to Bottomly; the
+frozen design that produced the airway/pasilla result is the same one that
+produced the Bottomly result, which is what makes the comparison
+meaningful in the first place.
+
+**This phase is closed.** No further experiments are planned against these
+four datasets under this frozen design. If this research track resumes, it
+needs either new external data with different characteristics (something
+between Bottomly's very-easy conventional separation and zebrafish's
+underpowered one) or a materially different question, not another pass
+over the same four datasets.
 
 ## Reproduce
 

@@ -386,7 +386,7 @@ result["discordant_genes"]                  # []</span>
     <section id="research" class="section-border-top">
       <div class="container">
         <div class="section-head">
-          <span class="eyebrow">Experimental, not in the package</span>
+          <span class="eyebrow">Experimental, not in the package. Phase closed.</span>
           <h2>Does DEConcord's own robustness signal predict anything?</h2>
           <p>
             A separate, exploratory research track under
@@ -395,8 +395,9 @@ result["discordant_genes"]                  # []</span>
             "AI feature." The question: does DEConcord's resampling-derived
             <code>rank_stability</code> carry predictive information beyond
             ordinary DE statistics, specifically for genes near a
-            significance decision boundary. Full writeup, every caveat
-            included, in
+            significance decision boundary. Tested on four datasets under one
+            unmodified frozen design. Full writeup, every dataset's numbers,
+            and every caveat, in
             <a href="https://github.com/nezihcandikme/DeConcord/blob/main/research/ml/FINDINGS.md" target="_blank" rel="noopener" class="link-accent">research/ml/FINDINGS.md</a>.
           </p>
         </div>
@@ -404,39 +405,46 @@ result["discordant_genes"]                  # []</span>
         <div class="stat-row">
           <div class="stat">
             <span class="stat-value">0.50 &rarr; 0.65</span>
-            <span class="stat-label">PR-AUC, conventional DE features vs. + rank_stability, locked evaluation</span>
+            <span class="stat-label">airway/pasilla PR-AUC, conventional vs. + rank_stability (gain)</span>
           </div>
           <div class="stat">
-            <span class="stat-value">0.85 &rarr; 0.88</span>
-            <span class="stat-label">ROC-AUC, same comparison</span>
+            <span class="stat-value">0.95 &rarr; 0.92</span>
+            <span class="stat-label">Bottomly PR-AUC, same comparison (loss)</span>
           </div>
           <div class="stat">
-            <span class="stat-value">2 datasets</span>
-            <span class="stat-label">airway, pasilla. Discovery phase, not a validated result</span>
+            <span class="stat-value">4 datasets</span>
+            <span class="stat-label">2 evaluable each direction, 1 non-evaluable (zebrafish). Phase closed.</span>
           </div>
         </div>
 
         <p class="benchmark-note">
-          DEConcord's resampling-derived rank stability showed incremental predictive
-          value for borderline genes beyond conventional DE statistics in the current
-          exploratory experiments. The task here is predicting whether edgeR agrees
-          with a borderline DESeq2 significance call (adjusted p-value between 0.01
-          and 0.10), using a logistic regression whose regularization strength was
-          selected by cross-validation on the training dataset alone, then evaluated
-          once on the other, held-out dataset. Across the full gene set, away from
-          that boundary, conventional DE statistics already explain almost everything
-          and the robustness feature adds little, this signal shows up specifically
-          near the decision boundary, which is also where it would matter most.
+          DeConcord's resampling-derived rank stability showed incremental predictive
+          value for borderline cross-method significance agreement in airway/pasilla
+          transfer experiments, but the benefit did not generalize universally: it
+          decreased performance on Bottomly, while zebrafish was non-evaluable under
+          the frozen endpoint. The current evidence therefore supports
+          dataset-dependent, rather than universal, predictive value.
         </p>
         <p class="benchmark-note">
-          What this is not: proven biological replication prediction. It's a
-          cross-method agreement result (does a second DE tool agree with a
-          borderline call from the first), checked on exactly two datasets, with
-          the borderline window itself chosen after an initial look at the data.
-          The long-term aim, estimating whether a discovery-dataset finding
-          replicates in an independent dataset, needs paired discovery/replication
-          data this project doesn't have yet. This result is evidence the
-          underlying idea is worth pursuing toward that aim, not a stand-in for it.
+          The task throughout: predicting whether edgeR agrees with a borderline
+          DESeq2 significance call (adjusted p-value between 0.01 and 0.10), using a
+          logistic regression whose regularization strength was selected by
+          cross-validation on the training dataset alone, then evaluated once on a
+          held-out dataset, never re-run or adjusted after seeing a result. On
+          airway/pasilla, adding <code>rank_stability</code> moved PR-AUC from 0.50 to
+          0.65. On Bottomly, a valid external dataset with 1,997 borderline genes, the
+          same unmodified design moved PR-AUC from 0.9491 down to 0.9230. Neither
+          result overturns the other; both came from the same frozen design applied to
+          different data, which is what makes the comparison meaningful.
+        </p>
+        <p class="benchmark-note">
+          What this is not: proven biological replication prediction, on any dataset.
+          It's a cross-method agreement result (does a second DE tool agree with a
+          borderline call from the first). The long-term aim, estimating whether a
+          discovery-dataset finding replicates in an independent dataset, needs paired
+          discovery/replication data this project doesn't have yet. This research
+          phase is now closed; no further experiments are planned against this frozen
+          design.
         </p>
       </div>
     </section>
