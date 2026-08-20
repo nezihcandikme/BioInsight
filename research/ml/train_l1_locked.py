@@ -111,9 +111,44 @@ def evaluate_locked(train_df, test_df, features, C):
     }
 
 
+def _one_class_report(df, name):
+    # nunique() < 2 covers both an empty frame and a genuinely single-class
+    # target -- StratifiedKFold and average_precision_score/roc_auc_score
+    # are all undefined (or outright raise) for a single-class y, so this
+    # has to be checked before choose_c/evaluate_locked ever touch the
+    # data, not caught as a downstream exception.
+    n_classes = df["target_method_significant"].nunique()
+    if n_classes >= 2:
+        return None
+    values = sorted(df["target_method_significant"].unique().tolist())
+    return f"{name} n={len(df)} unique_target_values={values}"
+
+
 def run_direction(train_name, test_name):
     train_df = load_dataset(train_name)
     test_df = load_dataset(test_name)
+
+    direction_label = f"{train_name.upper()} -> {test_name.upper()}"
+    print(f"\n===== {direction_label} =====")
+
+    problems = [
+        p for p in (
+            _one_class_report(train_df, f"train={train_name}"),
+            _one_class_report(test_df, f"test={test_name}"),
+        )
+        if p is not None
+    ]
+    if problems:
+        print(
+            "NON-EVALUABLE: target contains only one class ("
+            + "; ".join(problems) + "). PR-AUC/ROC-AUC are undefined for a "
+            "single-class target under the frozen adjusted-p 0.01-0.10 "
+            "borderline window -- this is a domain-of-applicability finding "
+            "about the affected dataset under this endpoint, not a negative "
+            "result for rank_stability, and not counted as evidence either "
+            "way. Skipping this direction."
+        )
+        return
 
     conventional = [
         "abs_logfc",
@@ -125,11 +160,6 @@ def run_direction(train_name, test_name):
         "neg_log10_p",
         "source_rank_stability",
     ]
-
-    print(
-        f"\n===== {train_name.upper()} -> "
-        f"{test_name.upper()} ====="
-    )
 
     for label, features in [
         ("Conventional", conventional),

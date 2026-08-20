@@ -80,5 +80,46 @@
       0.1
     ],
     "robustness_features_included": true
+  },
+  "zebrafish": {
+    "dataset_id": "zebrafish",
+    "source_method": "DESeq2",
+    "target_method": "edgeR",
+    "source_gene_count": 32469,
+    "target_gene_count": 18271,
+    "overlap_gene_count": 18271,
+    "usable_gene_count": 17198,
+    "source_only_gene_count": 14198,
+    "target_only_gene_count": 0,
+    "overlap_dropped_missing_required_count": 1073,
+    "overlap_missing_by_required_field": {
+      "log_fold_change_source": 0,
+      "p_value_source": 1048,
+      "adjusted_p_value_source": 1073,
+      "adjusted_p_value_target": 0
+    },
+    "positive_target_count": 0,
+    "negative_target_count": 17198,
+    "positive_prevalence": 0.0,
+    "missingness_by_feature": {
+      "gene_id": 0,
+      "dataset_id": 0,
+      "source_method": 0,
+      "target_method": 0,
+      "source_log_fold_change": 0,
+      "source_p_value": 0,
+      "source_adjusted_p_value": 0,
+      "source_threshold_significance_fraction": 0,
+      "target_method_significant": 0,
+      "source_significance_stability": 0,
+      "source_direction_stability": 0,
+      "source_rank_stability": 0
+    },
+    "threshold_alphas": [
+      0.01,
+      0.05,
+      0.1
+    ],
+    "robustness_features_included": true
   }
 }

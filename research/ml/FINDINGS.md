@@ -236,19 +236,64 @@ substitute for that.
   Neither substitutes for testing on an independent third dataset, which is
   the actual next step, see below.
 
-## Next: external dataset expansion before more complex models
+## External validation attempt: zebrafish (non-evaluable, not a negative result)
 
-The airway/pasilla discovery phase for this hypothesis is done. The next
-scientific priority is testing the same, now-frozen experiment design
-(borderline window, conventional + `rank_stability` features, locked L1
-logistic regression with train-only CV for `C`) against a third,
-independent dataset, not building a more complex model on the same two
-datasets. Two datasets can show a pattern is real and survives several
-robustness checks, which this one has; they can't show it generalizes past
-those two datasets, and a more expressive model fit to the same two
-datasets would risk mistaking dataset-specific quirks for a real effect
-before that question is even asked. Dataset selection and acquisition for
-this step haven't started yet.
+The first external-dataset attempt, `zfGenes` (zebrafishRNASeq package,
+gsk3 knockdown vs. control, 3 vs 3, see `benchmarks/run_deseq2_edger_
+zebrafish.R`), turned out **non-evaluable** for this frozen endpoint, not
+a data point against `rank_stability`.
+
+What happened, and the root cause is broader than the borderline window:
+`zebrafish_deseq2_to_edger.csv` has 17,198 usable genes, and
+`target_method_significant` (edgeR `FDR < 0.05`) is `0` for every single
+one of them (`build_report.json`'s `positive_target_count: 0,
+positive_prevalence: 0.0` for the whole dataset, not just the window).
+edgeR called nothing significant on this run at all. Restricting to the
+frozen borderline window (`source_adjusted_p_value` between 0.01 and
+0.10) narrows that down to 139 genes, still zero positives, because there
+were never any positives to find in the first place.
+`source_rank_stability` itself computed correctly for all 139 window
+genes (mean 0.9837, std 0.0188, min 0.8961, max 0.9989, no missing
+values), so the robustness feature pipeline has no bug here, the problem
+is entirely in the target. PR-AUC and ROC-AUC are undefined for a
+single-class target, there is no meaningful way to score a model against
+it, and `train_l1_locked.py` now detects this before attempting to fit or
+evaluate anything and skips the direction with an explicit `NON-EVALUABLE`
+message rather than silently producing a meaningless number or crashing.
+
+Why edgeR found nothing, as best as can be told without a fourth data
+point to compare against: 3-vs-3 replication is thin for a real, noisy
+biological knockdown effect, and `FDR < 0.05` is a real bar, not a
+generous one. This is a statement about *this dataset's power under
+edgeR's own default settings*, not about `rank_stability`, not about
+DEConcord's methods, and not about the direction of the effect found on
+airway/pasilla. It doesn't get counted as evidence for or against the
+hypothesis. It's recorded as a domain-of-applicability finding: the
+current frozen design (this borderline window, this significance
+threshold, this target definition) needs a dataset where edgeR actually
+finds *something*, and not every real RNA-seq dataset will clear that
+bar, especially not one this small. Per the design constraints for this
+track, the window and target definition are not being changed in response
+to seeing this, that would be exactly the kind of post-hoc adjustment the
+frozen design exists to prevent. zebrafish's `zfGenes`/
+`zebrafish_robustness.csv`/`zebrafish_deseq2_to_edger.csv` and the
+`benchmarks/results/*_zebrafish.*` outputs are kept, real, checked-in
+data, just not usable for this particular question.
+
+## Next: a fourth external dataset, higher powered than zebrafish
+
+The airway/pasilla discovery phase for this hypothesis is done, and
+zebrafish's result above means the external-validation step isn't either.
+The next scientific priority is still testing the same, unmodified frozen
+experiment design (borderline window, conventional + `rank_stability`
+features, locked L1 logistic regression with train-only CV for `C`)
+against a genuinely independent dataset, this time picked with the
+zebrafish lesson in mind: it needs enough replicates and effect size for
+DESeq2-borderline and edgeR-positive genes to actually co-occur, or the
+same non-evaluable outcome just repeats. Not a reason to build a more
+complex model on the two datasets already in hand, a more expressive model
+fit to the same two datasets risks mistaking their specific quirks for a
+real effect before generalization is even checked.
 
 ## Reproduce
 
