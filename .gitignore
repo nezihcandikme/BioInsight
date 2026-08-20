@@ -40,4 +40,6 @@ Thumbs.db
 /benchmarks/data/
 /benchmarks/results/*_results.csv
 /benchmarks/results/stress_unbalanced/
+/benchmarks/results/stress_batch/
+/benchmarks/results/stress_lowcounts/
 /examples/output/
