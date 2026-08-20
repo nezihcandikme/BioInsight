@@ -177,6 +177,23 @@ def run_direction(train_name, test_name):
             )
 
 
+def _available_datasets():
+    # Auto-discovers whatever *_deseq2_to_edger.csv tables build_tables.py
+    # has actually produced, so this script covers every dataset currently
+    # available (2 today, 3 once zebrafish's real R output lands) without
+    # needing another edit -- the frozen experiment design should apply to
+    # every dataset pair, not just the two it happened to be written
+    # against first.
+    names = []
+    for path in sorted(DATA_DIR.glob("*_deseq2_to_edger.csv")):
+        names.append(path.name.removesuffix("_deseq2_to_edger.csv"))
+    return names
+
+
 if __name__ == "__main__":
-    run_direction("airway", "pasilla")
-    run_direction("pasilla", "airway")
+    datasets = _available_datasets()
+
+    for train_name in datasets:
+        for test_name in datasets:
+            if train_name != test_name:
+                run_direction(train_name, test_name)

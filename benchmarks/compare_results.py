@@ -62,6 +62,13 @@ DATASETS = {
         "group_2_value": "untreated",
         "result_prefix": "pasilla_",
     },
+    "zebrafish": {
+        "r_script": "run_deseq2_edger_zebrafish.R",
+        "group_col": "condition",
+        "group_1_value": "knockdown",
+        "group_2_value": "control",
+        "result_prefix": "zebrafish_",
+    },
 }
 
 

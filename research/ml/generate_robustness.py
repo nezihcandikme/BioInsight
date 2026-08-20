@@ -78,8 +78,41 @@ def run_pasilla():
     )
 
 
+def run_zebrafish():
+    counts = pd.read_csv(DATA_DIR / "zebrafish_counts.csv", index_col=0)
+
+    group_1 = [
+        "Trt1",
+        "Trt3",
+        "Trt5",
+    ]
+
+    group_2 = [
+        "Ctl1",
+        "Ctl3",
+        "Ctl5",
+    ]
+
+    cpm = dc.compute_cpm(counts)
+    log2_cpm = dc.log2_transform(cpm)
+
+    result = dc.compute_resampling_stability(
+        log2_cpm,
+        group_1,
+        group_2,
+        resample_method="leave_one_out",
+    )
+
+    gene_stability = result["gene_stability"].reset_index()
+    gene_stability.to_csv(
+        OUTPUT_DIR / "zebrafish_robustness.csv",
+        index=False,
+    )
+
+
 if __name__ == "__main__":
     run_airway()
     run_pasilla()
+    run_zebrafish()
 
     print("Robustness tables written successfully.")

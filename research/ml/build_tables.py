@@ -20,6 +20,11 @@ DATASETS = {
         "pasilla_edger_results.csv",
         "pasilla_robustness.csv",
     ),
+    "zebrafish": (
+        "zebrafish_deseq2_results.csv",
+        "zebrafish_edger_results.csv",
+        "zebrafish_robustness.csv",
+    ),
 }
 
 
