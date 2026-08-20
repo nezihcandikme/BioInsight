@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css" />
 
   <meta property="og:title" content="DEConcord: how much do DESeq2, edgeR, and limma-voom actually agree?" />
-  <meta property="og:description" content="Method concordance, threshold sensitivity, and pathway stability for RNA-seq differential expression. Depth over breadth, on purpose." />
+  <meta property="og:description" content="Method concordance, threshold sensitivity, pathway stability, and resampling stability for RNA-seq differential expression, checked against real DESeq2, edgeR, and limma-voom output." />
   <meta property="og:type" content="website" />
 </head>
 <body>
@@ -54,11 +54,12 @@
     <section class="hero">
       <div class="container">
         <span class="eyebrow">Differential expression concordance · v0.18.0</span>
-        <h1>Two tools, one count matrix.<br />How much do they actually agree?</h1>
+        <h1>How much do DESeq2, edgeR, and limma-voom actually agree?</h1>
         <p class="lede">
-          DEConcord takes DE result tables (DESeq2, edgeR, or anything with
-          a gene ID, a log fold change, and a p-value) and measures how
-          much of the biological conclusion survives the choice of method.
+          DEConcord takes DE result tables (DESeq2, edgeR, limma-voom, or
+          anything with a gene ID, a log fold change, and a p-value) and
+          measures how much of the biological conclusion survives the
+          choice of method.
         </p>
         <div class="actions">
           <a class="btn btn-primary" href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">View on GitHub</a>
@@ -100,7 +101,8 @@ result["discordant_genes"]                  # []</span>
             DESeq2 and edgeR can both run correctly on the same count matrix
             and still call a different set of genes significant. That gap is
             real information, not noise to average away. DEConcord measures
-            it directly instead of picking one tool and hoping. The pipeline
+            that gap directly instead of picking one tool and treating its
+            output as the answer. The pipeline
             below (validation through pathway enrichment) is what's left of
             DEConcord's original, broader RNA-seq toolkit. It's kept as
             infrastructure that still generates real DE result tables to
@@ -324,8 +326,8 @@ result["discordant_genes"]                  # []</span>
       <div class="container">
         <div class="section-head">
           <span class="eyebrow">In practice</span>
-          <h2>Real output, from real code.</h2>
-          <p>The plots below came out of an actual <code>deconcord</code> CLI run on a synthetic 4,000-gene dataset. Same command, same defaults you'd run yourself.</p>
+          <h2>What an actual run produces.</h2>
+          <p>The plots below came out of a real <code>deconcord</code> CLI run on a synthetic 4,000-gene dataset. Same command, same defaults you'd run yourself.</p>
         </div>
 
         <div class="output-grid">
@@ -493,8 +495,8 @@ result["discordant_genes"]                  # []</span>
       <div class="container">
         <div>
           <span class="eyebrow">Get started</span>
-          <h2>Clone it, install it, question the output.</h2>
-          <p>DEConcord is early, honest about it, and built in the open. Read the source before you trust the numbers.</p>
+          <h2>Try it on your own DE result tables.</h2>
+          <p>DEConcord is early, pre-1.0, and built in the open. Worth reading the source before trusting the numbers, especially at this stage.</p>
           <div class="actions">
             <a class="btn btn-primary" href="https://github.com/nezihcandikme/DeConcord" target="_blank" rel="noopener">View on GitHub</a>
             <a class="btn btn-secondary" href="https://github.com/nezihcandikme/DeConcord#readme" target="_blank" rel="noopener">Read the README</a>

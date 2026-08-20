@@ -8,7 +8,7 @@ Robustness and concordance analysis for RNA-seq differential expression.
 
 Most RNA-seq workflows report the significant genes or pathways from one analysis configuration. DEConcord checks whether those conclusions stay stable when reasonable choices change: a different DE tool, a different significance threshold, a different resampling of the same data.
 
-It's not a DESeq2/edgeR replacement, and it's not trying to be. Running its own differential expression isn't the main job. DEConcord takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and tells you how much to trust them when they disagree.
+DEConcord isn't a DESeq2/edgeR replacement, and running its own differential expression is a small, secondary part of it. It takes DE result tables (from DESeq2, edgeR, or anything with a gene ID, a log fold change, and a p-value) and reports how much their conclusions actually agree, and where they don't.
 
 **Status**: early, pre-1.0 (v0.18.0), under active development. Method concordance, threshold sensitivity, pathway stability, and resampling stability (including per-gene direction and rank stability) are implemented; method concordance is checked against real data (see [Validation](#validation)).
 
@@ -73,11 +73,11 @@ For the full workflow in one runnable script, see [`examples/quickstart.py`](exa
 
 ## Why
 
-I'm a high-school student learning statistics and computational biology. This project started as a general bulk RNA-seq pipeline: validation, QC, normalization, a from-scratch differential expression implementation. That was useful for learning the mechanics. But a narrower question turned out to be more interesting, and more honest about what a small project can actually contribute.
+I'm a high-school student learning statistics and computational biology. This project started as a general bulk RNA-seq pipeline: validation, QC, normalization, a from-scratch differential expression implementation. That was useful for learning the mechanics, but a narrower question turned out to be more interesting, and more realistic about what a small project can actually contribute.
 
-The question isn't "can I build another DE tool." Mature platforms like [OmicVerse](https://github.com/Starlitnightly/omicverse) already do that, with a published paper and years of development behind them. The question is "how much do the conclusions from *existing* tools actually hold up when you stress-test them." That doesn't require out-building anything. It requires being careful.
+Mature platforms like [OmicVerse](https://github.com/Starlitnightly/omicverse) already build general DE tooling well, with a published paper and years of development behind them, so trying to out-build that isn't the point here. What seemed more worth checking was how much the conclusions from existing tools actually hold up once you stress-test them, which is more a matter of being careful than building something new.
 
-The code running is step one. The numbers meaning what I think they mean is the actual objective. The dated account of what changed, why, and what didn't work, including the reasoning behind this rename, is in [`DEVLOG.md`](DEVLOG.md).
+Getting the code to run was step one. Making sure the numbers meant what I thought they meant took a lot longer, and is really what this project is about. The dated account of what changed, why, and what didn't work, including the reasoning behind this rename, is in [`DEVLOG.md`](DEVLOG.md).
 
 ## What it does
 
@@ -106,7 +106,7 @@ interpretable report                     ← not built yet
 - `deconcord.concordance.pathway_stability.compute_pathway_stability`. The same overlap-and-Jaccard idea, applied to two pathway enrichment result tables instead of two DE tables. Answers "does this pathway stay enriched regardless of which DE method or threshold produced the significant-gene list," rather than "does this gene stay significant."
 - `deconcord.concordance.resampling_stability.compute_resampling_stability`. Reruns DE on perturbed sample sets (repeated random subsamples, or exhaustive leave-one-out) and reports, per gene, what fraction of reruns still call it significant. Answers "does this gene stay significant regardless of which samples happened to be in the dataset," the sample-level analog of threshold sensitivity. Also reports `direction_stability` (does the gene keep the same effect direction across reruns) and `rank_stability` (does it keep roughly the same position relative to every other gene), computed from the same reruns at no extra cost.
 
-**Everything else is infrastructure, not the identity.** It's what's left of the original bulk RNA-seq pipeline. It's kept because it's useful (it's how the `benchmarks/` DE result tables get generated, and it's a future source of a third method to check for concordance), not because DEConcord is trying to be a general-purpose RNA-seq toolkit:
+Everything else below is infrastructure rather than the core contribution — what's left of the original bulk RNA-seq pipeline. It's kept because it's useful (it's how the `benchmarks/` DE result tables get generated, and it's a source of a third method to check for concordance), not because DEConcord is trying to be a general-purpose RNA-seq toolkit:
 
 - **Validation, QC, normalization**: count matrix checks, library size and outlier detection, CPM plus log2 scaling.
 - **Differential expression**: Welch's t-test, an empirical-Bayes moderated t-test, or a covariate-adjusted linear model. This is DEConcord's own from-scratch DE implementation. It's useful as one more method to check for concordance against DESeq2/edgeR, not as a competing product.
@@ -115,9 +115,9 @@ interpretable report                     ← not built yet
 
 ## What DEConcord does not build
 
-Depth over breadth, on purpose. It's not going toward single-cell analysis, spatial transcriptomics, proteomics, metabolomics, molecular docking or dynamics, protein structure prediction, general-purpose ML tooling, or integrations added just because other omics packages have them.
+This is deliberate: depth on one question rather than breadth across many. DEConcord isn't headed toward single-cell analysis, spatial transcriptomics, proteomics, metabolomics, molecular docking or dynamics, protein structure prediction, general-purpose ML tooling, or integrations added just because other omics packages have them.
 
-If a proposed feature doesn't help answer "how robust is this differential expression conclusion," it probably doesn't belong here.
+If a proposed feature doesn't help answer how robust a differential expression conclusion is, it probably doesn't belong here.
 
 ## Validation
 
@@ -172,13 +172,13 @@ Every CLI run writes a `run_metadata.json`: DEConcord version, Python version, c
 
 ## Roadmap
 
-**Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. Resampling stability, checking whether a gene's significance call survives a different sample set through subsampling or leave-one-out. A `deconcord concordance` CLI subcommand, comparing two existing DE result tables without running the pipeline first. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare. The stress-test benchmark suite: a third DE tool (limma-voom) and all three harder data regimes (unbalanced groups, batch effects, low counts) checked against real Bottomly subsets, real results above and in `benchmarks/README.md`.
+**Current** (built): method concordance between any two DE result tables — validated pairwise across DESeq2, edgeR, and limma-voom (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. Resampling stability, checking whether a gene's significance call survives a different sample set through subsampling or leave-one-out. A `deconcord concordance` CLI subcommand, comparing two existing DE result tables without running the pipeline first. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare. The stress-test benchmark suite: a third DE tool (limma-voom) and all three harder data regimes (unbalanced groups, batch effects, low counts) checked against real Bottomly subsets, real results above and in `benchmarks/README.md`.
 
 **Next**: not yet decided. The stress-test suite's original scope (third tool, three harder regimes) is complete; what comes after it hasn't been picked yet.
 
 **Later**: a scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. CLI subcommands for threshold sensitivity and pathway stability too, once the single-function `concordance` subcommand has been used enough to know if the same shape actually fits them. Richer interpretation and reporting.
 
-No dates. This project moves at whatever pace it moves at, and a roadmap with fake deadlines is worse than one without.
+No dates here, since this project moves at whatever pace it moves at, and a roadmap with fake deadlines would be more misleading than one without.
 
 ## Documentation, citation, and contributing
 
