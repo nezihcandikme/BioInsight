@@ -134,6 +134,8 @@ If a proposed feature doesn't help answer "how robust is this differential expre
 
 Three established tools, run independently, agree strongly with each other in every pairwise combination. Correlation is high across all three pairs, and zero genes get called significant by both members of any pair while disagreeing on direction. The disagreement that exists is almost entirely about which marginal genes clear each tool's own significance threshold, not about direction or magnitude for genes multiple tools agree are real. This is a real finding on two datasets, not a general law about these three tools. See `benchmarks/method_concordance.py` and `benchmarks/README.md` for the full methodology.
 
+**Stress test, regime 1 (unbalanced groups)**: the same three-tool concordance check, but as one group's sample size shrinks from a balanced 10-vs-11 down to a severe 2-vs-11 on real Bottomly subsets. Significance-overlap agreement degrades substantially as groups become unbalanced (Jaccard 0.930 to 0.704 for DESeq2 vs edgeR, 0.880 to 0.602 for DESeq2 vs limma-voom, the steepest decline of the three), but directional agreement among jointly-significant genes stays exactly 1.000, zero discordant genes, at every level tested. See `benchmarks/README.md`'s stress-test section for the full table and interpretation.
+
 **DEConcord's own DE methods vs DESeq2/edgeR** is a check on the infrastructure, not the project's main claim anymore.
 
 | dataset | method | precision (DESeq2 / edgeR) | recall (DESeq2 / edgeR) | log2FC Pearson r (DESeq2 / edgeR) |
@@ -172,7 +174,7 @@ Every CLI run writes a `run_metadata.json`: DEConcord version, Python version, c
 
 **Current** (built): method concordance between DESeq2 and edgeR, or any two DE result tables (overlap, Jaccard, directional and effect-size agreement, concordant and discordant genes). Threshold sensitivity, checking which findings survive small, reasonable changes to the significance cutoff. Pathway stability, checking whether an enriched pathway stays enriched across methods and settings. Resampling stability, checking whether a gene's significance call survives a different sample set through subsampling or leave-one-out. A `deconcord concordance` CLI subcommand, comparing two existing DE result tables without running the pipeline first. The underlying RNA-seq pipeline (QC, DE, enrichment) that generates the tables to compare.
 
-**Next**: a stress-test benchmark suite (a third DE tool, harder data regimes: unbalanced groups, batch effects, low counts) to check how concordance behaves outside the two clean two-group datasets checked so far.
+**Next**: the stress-test benchmark suite is underway. The third DE tool (limma-voom) and the first harder data regime (unbalanced groups, real Bottomly subsets from 10-vs-11 down to 2-vs-11) are both done, with real results above and in `benchmarks/README.md`. Two more regimes remain: batch effects and low counts.
 
 **Later**: a scientifically defensible robustness or concordance summary statistic, if one turns out to be justified once the above exists, rather than invented ahead of it. CLI subcommands for threshold sensitivity and pathway stability too, once the single-function `concordance` subcommand has been used enough to know if the same shape actually fits them. Richer interpretation and reporting.
 
