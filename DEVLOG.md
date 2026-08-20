@@ -441,3 +441,29 @@ Decisions rejected along the way:
 - **Moving straight to a more complex model now that the logistic-regression result looks real.** Rejected for the same reason a bootstrap CI over two datasets' worth of genes isn't evidence of cross-dataset generalization: a fancier model fit to the same two datasets risks fitting dataset-specific quirks harder, not finding something more true. Next real step is a third, independent dataset under this same frozen experiment design, not a bigger model on the same two.
 
 No version bump: this entry documents `research/ml/` work only. Current package version stays 0.18.0.
+
+---
+
+## Aug 20: Bottomly acquisition, dexus to recount3
+
+Fourth external dataset for the frozen ML endpoint (see the previous entry and `research/ml/FINDINGS.md`'s zebrafish section for why a fourth, higher-powered dataset was needed: zebrafish's 3-vs-3 design turned out to have zero edgeR-significant genes at all, non-evaluable for the borderline-window target, not a negative result). Picked Bottomly et al. 2011 (mouse striatum, B6 vs D2 strains, 21 samples, roughly triple zebrafish's replication) and originally wrote `benchmarks/run_deseq2_edger_bottomly.R` against `dexus::countsBottomly`, a Bioconductor object that traces back to the original published Bottomly count matrix.
+
+That script never got to run: `dexus` left Bioconductor after release 3.12 and isn't installable on current Bioconductor (3.23). Downgrading R/Bioconductor to accommodate one obsolete package, or force-installing it outside Bioconductor's own dependency resolution, were both off the table, an environment shouldn't get bent around a package that's been gone for over a hundred Bioconductor releases.
+
+Replacement route: `recount3`, pulling the same underlying study straight from SRA instead of through a downstream Bioconductor object. Verified before writing any code, not assumed: `organism = "mouse"`, `data_source = "sra"`, project `SRP004777` genuinely exists in recount3's hosted files (fetched its metadata file directly, got real content back, not a 404), and NCBI's own SRA listing for SRP004777 shows 21 runs with titles following a `{strain}_{replicate}_{lane}` pattern (`B6_1_7`, `D2_2_4`, etc.) consistent with the verified 10 B6/11 D2 design.
+
+One real statistical difference from the dexus route, not a cosmetic one: recount3's gene-level `raw_counts` assay is base-pair coverage (AUC-based), not literal read counts, unlike `countsBottomly`, which was already a read-count matrix. Feeding `raw_counts` straight into DESeq2/edgeR would have been silently wrong. recount3's own documentation prescribes `transform_counts(rse, by = "auc", targetSize = 4e7, L = 100, round = TRUE)` to produce scaled, rounded counts suitable for count-based DE tools; the rewritten script applies this before anything touches DESeq2 or edgeR, and says so in a comment loud enough that a future rerun comparing Bottomly's numbers against a hypothetical dexus-based version knows this is where any difference would come from.
+
+Group labels: rather than assume a specific recount3 metadata column name sight-unseen (this sandbox has no R to check it against, the same constraint that produced the Trt1/Trt3/Trt5 zebrafish mistake), the script scans every `colData()` column at runtime, keeps whichever ones classify all 21 samples unambiguously as B6 or D2 by the same name-pattern match the dexus version used, cross-checks multiple qualifying columns against each other if more than one matches, and refuses to proceed unless classification lands on exactly 10 B6 and 11 D2 -- full `colData()` dump on any failure. Same defensive shape as the dexus script's own validation, just applied across an unknown column set instead of one assumed one.
+
+Output contract unchanged on purpose: `benchmarks/data/bottomly_counts.csv`, `benchmarks/data/bottomly_metadata.csv`, `benchmarks/results/bottomly_deseq2_results.csv`, `benchmarks/results/bottomly_edger_results.csv`, same columns as before. `compare_results.py`, `build_tables.py`, and `generate_robustness.py`'s `run_bottomly` (which already reads B6/D2 membership from `bottomly_metadata.csv` at runtime rather than a hardcoded list) needed no changes.
+
+This sandbox has no R and can't run the script; it's written, defensively validated, and ready for a real R environment to execute. Ran what the sandbox can check: `pytest -q` and `ruff check src/ tests/ benchmarks/ examples/` against the unchanged Python layer, both clean, confirming this R-only rewrite didn't touch anything Python depends on.
+
+Decisions rejected along the way:
+
+- **Guessing the recount3 colData() column name for strain** (e.g. assuming it's called `sra.sample_title`) instead of scanning all columns at runtime. Rejected for the same reason the zebrafish sample names shouldn't have been guessed: a wrong assumption here would silently produce a wrong benchmark instead of failing loudly.
+- **Downgrading Bioconductor or force-installing `dexus` from source/archive.** Explicitly ruled out. An obsolete, unmaintained package with no compiled-dependency guarantees on a current R version is exactly the kind of foundation this project's own restraint principle argues against building on.
+- **Using recount3's `compute_read_counts()` instead of `transform_counts()`.** Both are documented recount3 conversions; `transform_counts(by = "auc", ...)` was picked because it's the one recount3's own documentation points to specifically for downstream use with DESeq2/limma, which is exactly this script's use case.
+
+No package version bump: this entry documents `benchmarks/` (research-supporting infrastructure) and the `research/ml/` acquisition path, not `src/deconcord/`. Current package version stays 0.18.0.
